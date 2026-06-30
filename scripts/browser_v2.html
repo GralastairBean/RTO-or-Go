@@ -670,7 +670,7 @@
 
     <script>
         // ---------- Event data ----------
-        // Inhibit logic...
+        // Inhibit properties logic...
         //  - inhibited: 'nil' = never inhibited
         //  - inhibited: 'above_80' = inhibited above 80 kts
         //  - inhibited: 'windshear' = inhibited above 100 kts
@@ -728,6 +728,10 @@
         ];
         const rnd = (lo, hi) => Math.floor(Math.random() * (hi - lo + 1)) + lo;
         const pick = a => a[Math.floor(Math.random() * a.length)];
+
+        // ---------- Decision tree implementation ----------
+        // This is the failure-event selection section that chooses a
+        // failure based on the current speed and each event's inhibit rule.
         function pickFailureEvent(speed) {
             const candidates = failureEvents.filter(e => {
                 if (speed < 80) return true;
