@@ -39,15 +39,17 @@
 
         .stage {
             display: flex;
-            gap: 18px;
+            gap: 10px;
             align-items: flex-start;
+            flex-wrap: nowrap;
+            justify-content: center;
         }
 
         /* ===== Speed tape ===== */
         .tape-wrap {
             position: relative;
-            width: 120px;
-            height: 480px;
+            width: 80px;
+            height: 420px;
             background: linear-gradient(90deg, #3c4149, #565c64 55%, #3c4149);
             border: 2px solid #1a1f26;
             border-radius: 4px;
@@ -102,21 +104,20 @@
 
         .tick {
             position: absolute;
-            left: 50%;
-            transform: translateX(-100%);
+            left: calc(50% + 2px);
             height: 0;
             border-top: 2px solid #e8e8e8;
         }
 
         .tick.major,
         .tick.minor {
-            width: 18px;
+            width: 12px;
         }
 
         .tick-lbl {
             position: absolute;
-            left: calc(50% - 18px - 42px);
-            width: 42px;
+            left: 2px;
+            width: 32px;
             color: #fff;
             font-size: 1rem;
             font-weight: bold;
@@ -139,7 +140,7 @@
             position: absolute;
             left: 50%;
             transform: translateX(-50%);
-            width: 50%;
+            width: 60%;
         }
 
         .bug.v1 .ln {
@@ -149,9 +150,11 @@
 
         .bug.v1 .tx {
             left: 100%;
-            margin-left: 6px;
-            top: -12px;
+            margin-left: 4px;
+            top: -10px;
             color: #22d3ee;
+            font-size: .9rem;
+            white-space: nowrap;
         }
 
         .bug.vr {
@@ -193,10 +196,11 @@
         .bug .tx {
             position: absolute;
             right: 4px;
-            top: -12px;
+            top: -10px;
             font-weight: bold;
-            font-size: 1rem;
+            font-size: .95rem;
             color: #22d3ee;
+            white-space: nowrap;
         }
 
         .bug.v1 .ln {
@@ -242,7 +246,7 @@
         }
 
         .tape-cap {
-            width: 120px;
+            width: 100%;
             text-align: center;
             color: #fff;
             font-size: .8rem;
@@ -252,8 +256,8 @@
 
         /* ===== Event log ===== */
         .log-wrap {
-            width: 420px;
-            height: 480px;
+            width: 380px;
+            height: 420px;
             display: flex;
             flex-direction: column;
             background: #0d1117;
@@ -461,6 +465,121 @@
         .res-row .val.bad {
             color: #ff5555;
         }
+
+        @media (max-width: 720px) {
+            body {
+                padding: 6px;
+            }
+
+            h1 {
+                font-size: .9rem;
+            }
+
+            .subtitle {
+                font-size: .65rem;
+                margin-bottom: 8px;
+            }
+
+            .stage {
+                gap: 8px;
+                align-items: flex-start;
+                justify-content: center;
+            }
+
+            .tape-wrap {
+                width: 65px;
+                height: 260px;
+            }
+
+            .tape-value {
+                font-size: .85rem;
+            }
+
+            .tick-lbl {
+                left: 6px;
+                width: auto;
+                font-size: .8rem;
+                text-align: left;
+            }
+
+            .bug.v1 .tx {
+                font-size: .75rem;
+                right: 2px;
+            }
+
+            .bug.vr .circle {
+                width: 10px;
+                height: 10px;
+                border-width: 2px;
+            }
+
+            .speed-arrow {
+                border-top: 7px solid transparent;
+                border-bottom: 7px solid transparent;
+                border-right: 14px solid #ffde59;
+            }
+
+            .log-wrap {
+                width: 260px;
+                height: 240px;
+            }
+
+            .controls {
+                width: 100%;
+                gap: 6px;
+            }
+
+            .btn-row {
+                flex-direction: column;
+                width: 100%;
+                gap: 8px;
+            }
+
+            .btn-row button,
+            .start-btn {
+                width: 100%;
+            }
+
+            button {
+                font-size: .95rem;
+                padding: 8px 14px;
+            }
+
+            .targets {
+                font-size: .82rem;
+            }
+
+            .hint {
+                font-size: .62rem;
+            }
+
+            .vacate-panel,
+            .results {
+                width: 100%;
+                padding: 12px;
+            }
+        }
+
+        @media (max-width: 600px),
+        (max-height: 700px) {
+            .tape-wrap {
+                width: 60px;
+                height: 220px;
+            }
+
+            .log-wrap {
+                width: 220px;
+                height: 200px;
+            }
+
+            .start-btn {
+                padding: 8px 12px;
+            }
+
+            .targets {
+                font-size: .8rem;
+            }
+        }
     </style>
 </head>
 
@@ -564,6 +683,7 @@
 
         // ---------- DOM ----------
         const tapeInner = document.getElementById('tapeInner');
+        const tapeWrap = document.querySelector('.tape-wrap');
         const idxBox = document.getElementById('idxBox');
         const v1Value = document.getElementById('v1Value');
         const logEl = document.getElementById('log');
@@ -577,7 +697,10 @@
         const capBot = document.getElementById('capBot');
 
         // ---------- Speed tape ----------
-        const PX_PER_KT = 5, TAPE_H = 480;
+        const PX_PER_KT = 5;
+        function tapeHeight() {
+            return tapeWrap ? tapeWrap.clientHeight : 480;
+        }
         function buildTape(maxSpeed) {
             tapeInner.innerHTML = '';
             const top = maxSpeed + 40;
@@ -592,6 +715,8 @@
                     tapeInner.appendChild(l);
                 }
             }
+            // ensure tape is aligned correctly when first rendered
+            updateTape(0);
         }
         function addBarber(fromKt, toKt) {
             const b = document.createElement('div'); b.className = 'barber';
@@ -610,7 +735,8 @@
             tapeInner.appendChild(b);
         }
         function updateTape(speed) {
-            tapeInner.style.transform = 'translateY(' + (TAPE_H / 2 - speed * PX_PER_KT) + 'px)';
+            const h = tapeHeight();
+            tapeInner.style.transform = 'translateY(' + (h / 2 - speed * PX_PER_KT) + 'px)';
             idxBox.textContent = Math.round(speed);
         }
 
