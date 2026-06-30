@@ -649,6 +649,7 @@
                 v1, split, vr, maxSpeed, failureSpeed, alert, isRed,
                 speed: 0, phase: 'roll', failureTriggered: false, hundredCalled: false,
                 v1Called: false, rotatedCalled: false,
+                vrTime: null, vrTimer: null,
                 speedAtFailure: null, timeOfFailure: null, choice: null, speedAtDecision: null, timeOfDecision: null,
                 autoRotated: false, vacated: 'N/A', startT: now, lastT: now
             };
@@ -690,9 +691,23 @@
                     logEvent(state.alert, state.isRed ? 'red' : 'amber');
                 }
                 if (state.speed >= state.vr) {
-                    if (!state.rotatedCalled) { state.rotatedCalled = true; logEvent('"ROTATE"', 'call'); }
-                    if (state.choice === null) { state.choice = 'g'; state.autoRotated = true; logEvent('"GO"', 'good'); }
-                    state.phase = (state.choice === 's') ? 'stop' : 'go';
+                    if (!state.rotatedCalled) {
+                        state.rotatedCalled = true; logEvent('\"ROTATE\"', 'call');
+                        state.vrTime = now;
+                        // disable user decision buttons at ROTATE (no action allowed)
+                        try { stopBtn.disabled = true; goBtn.disabled = true; } catch (e) { }
+                        // schedule end-of-sim 2s after VR
+                        if (state.vrTimer) clearTimeout(state.vrTimer);
+                        state.vrTimer = setTimeout(() => {
+                            try {
+                                if (!state) return;
+                                // end simulation (no-action ends after 2s at VR)
+                                state.phase = 'go';
+                                finish();
+                            } catch (e) { }
+                        }, 2000);
+                    }
+                    // Do not auto-select GO; decisions are locked after ROTATE.
                 }
                 updateTape(state.speed); requestAnimationFrame(loop);
             }
@@ -708,16 +723,21 @@
             }
         }
         function makeDecision(ch) {
-            if (!state || state.phase !== 'roll' || state.choice !== null) return;
+            // Block decisions after ROTATE: once ROTATE logged the state is locked
+            if (!state || state.choice !== null || state.rotatedCalled) return;
             state.choice = ch; state.speedAtDecision = Math.round(state.speed);
             state.timeOfDecision = performance.now();
             if (ch === 's') { logEvent('"STOP"', 'red'); }
             else { logEvent('"GO"', 'good'); }
             state.phase = (ch === 's') ? 'stop' : 'go';
+            // if STOP selected while VR timer is pending, cancel the scheduled finish
+            if (ch === 's' && state.vrTimer) { clearTimeout(state.vrTimer); state.vrTimer = null; }
             stopBtn.disabled = true; goBtn.disabled = true;
         }
         function finish() {
             stopBtn.disabled = true; goBtn.disabled = true;
+            // clear any pending VR timer
+            try { if (state && state.vrTimer) { clearTimeout(state.vrTimer); state.vrTimer = null; } } catch (e) { }
             let resultText, ok, successfulRTO = false;
             if (state.choice === 's') {
                 if (state.speedAtDecision > state.v1) { resultText = 'OVERRUN (RTO > V1)'; ok = false; }
@@ -735,7 +755,7 @@
             document.getElementById('rTargets').textContent = 'V1=' + state.v1 + ' / VR=' + state.vr + ' KT';
             document.getElementById('rFailure').textContent = state.alert;
             document.getElementById('rEcamSpd').textContent = state.speedAtFailure + ' KT';
-            document.getElementById('rDecSpd').textContent = state.autoRotated ? 'N/A (auto-rotate)' : (state.speedAtDecision + ' KT');
+            document.getElementById('rDecSpd').textContent = (state.speedAtDecision === null) ? 'No decision' : (state.autoRotated ? 'N/A (auto-rotate)' : (state.speedAtDecision + ' KT'));
             let react = 'N/A';
             if (state.failureTriggered && state.timeOfDecision !== null)
                 react = ((state.timeOfDecision - state.timeOfFailure) / 1000).toFixed(2) + ' s';
@@ -799,6 +819,8 @@
             resultsEl.style.display = 'none';
             vacatePanel.style.display = 'none';
             logEl.innerHTML = '';
+            // clear any pending VR timer
+            try { if (state && state.vrTimer) { clearTimeout(state.vrTimer); state.vrTimer = null; } } catch (e) { }
             state = null;
             // regenerate and display new preset V speeds
             generatePreset();
