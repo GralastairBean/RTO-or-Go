@@ -911,13 +911,11 @@
                 if (!state.rotatedCalled) {
                     state.rotatedCalled = true; logEvent('"ROTATE"', 'call');
                     state.vrTime = now;
-                    // disable user decision buttons at ROTATE (no action allowed)
-                    try { stopBtn.disabled = true; goBtn.disabled = true; } catch (e) { }
-                    // schedule end-of-sim 2s after VR
+                    // keep decision buttons active so the user can still choose STOP or GO after VR
                     if (state.vrTimer) clearTimeout(state.vrTimer);
                     state.vrTimer = setTimeout(() => {
                         try {
-                            if (!state) return;
+                            if (!state || state.choice !== null) return;
                             // end simulation (no-action ends after 2s at VR)
                             state.phase = 'go';
                             finish();
@@ -947,15 +945,14 @@
             }
         }
         function makeDecision(ch) {
-            // Block decisions after ROTATE: once ROTATE logged the state is locked
-            if (!state || state.choice !== null || state.rotatedCalled) return;
+            if (!state || state.choice !== null) return;
             state.choice = ch; state.speedAtDecision = Math.round(state.speed);
             state.timeOfDecision = performance.now();
             if (ch === 's') { logEvent('"STOP"', 'red'); }
             else { logEvent('"GO"', 'good'); }
             state.phase = (ch === 's') ? 'stop' : 'go';
-            // if STOP selected while VR timer is pending, cancel the scheduled finish
-            if (ch === 's' && state.vrTimer) { clearTimeout(state.vrTimer); state.vrTimer = null; }
+            // cancel the pending auto-finish if the user makes a decision
+            if (state.vrTimer) { clearTimeout(state.vrTimer); state.vrTimer = null; }
             stopBtn.disabled = true; goBtn.disabled = true;
         }
         function finish() {
