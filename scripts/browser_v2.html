@@ -673,42 +673,47 @@
             let thrust = (s < 30) ? 1.25 * (0.4 + (s / 30) * 0.6) : 1.25;
             return thrust - 0.000025 * s * s;
         }
+
+        // centralised event checks so they run in roll and go phases
+        function checkEvents(now) {
+            if (!state) return;
+            if (state.speed >= 100 && !state.hundredCalled) {
+                state.hundredCalled = true; logEvent('"100 KTS"', 'call');
+            }
+            if (state.speed >= state.v1 && !state.v1Called) {
+                state.v1Called = true; logEvent('"VEE ONE"', 'call');
+            }
+            if (state.speed >= state.failureSpeed && !state.failureTriggered) {
+                state.failureTriggered = true; state.speedAtFailure = Math.round(state.speed);
+                state.timeOfFailure = now;
+                playChord();
+                logEvent(state.alert, state.isRed ? 'red' : 'amber');
+            }
+            if (state.speed >= state.vr) {
+                if (!state.rotatedCalled) {
+                    state.rotatedCalled = true; logEvent('"ROTATE"', 'call');
+                    state.vrTime = now;
+                    // disable user decision buttons at ROTATE (no action allowed)
+                    try { stopBtn.disabled = true; goBtn.disabled = true; } catch (e) { }
+                    // schedule end-of-sim 2s after VR
+                    if (state.vrTimer) clearTimeout(state.vrTimer);
+                    state.vrTimer = setTimeout(() => {
+                        try {
+                            if (!state) return;
+                            // end simulation (no-action ends after 2s at VR)
+                            state.phase = 'go';
+                            finish();
+                        } catch (e) { }
+                    }, 2000);
+                }
+            }
+        }
         function loop(now) {
             const dt = Math.min((now - state.lastT) / 1000, 0.05); state.lastT = now;
 
             if (state.phase === 'roll') {
                 state.speed += accelAt(state.speed) * 10 * dt;
-                if (state.speed >= 100 && !state.hundredCalled) {
-                    state.hundredCalled = true; logEvent('"100 KTS"', 'call');
-                }
-                if (state.speed >= state.v1 && !state.v1Called) {
-                    state.v1Called = true; logEvent('\"VEE ONE\"', 'call');
-                }
-                if (state.speed >= state.failureSpeed && !state.failureTriggered) {
-                    state.failureTriggered = true; state.speedAtFailure = Math.round(state.speed);
-                    state.timeOfFailure = now;
-                    playChord();
-                    logEvent(state.alert, state.isRed ? 'red' : 'amber');
-                }
-                if (state.speed >= state.vr) {
-                    if (!state.rotatedCalled) {
-                        state.rotatedCalled = true; logEvent('\"ROTATE\"', 'call');
-                        state.vrTime = now;
-                        // disable user decision buttons at ROTATE (no action allowed)
-                        try { stopBtn.disabled = true; goBtn.disabled = true; } catch (e) { }
-                        // schedule end-of-sim 2s after VR
-                        if (state.vrTimer) clearTimeout(state.vrTimer);
-                        state.vrTimer = setTimeout(() => {
-                            try {
-                                if (!state) return;
-                                // end simulation (no-action ends after 2s at VR)
-                                state.phase = 'go';
-                                finish();
-                            } catch (e) { }
-                        }, 2000);
-                    }
-                    // Do not auto-select GO; decisions are locked after ROTATE.
-                }
+                checkEvents(now);
                 updateTape(state.speed); requestAnimationFrame(loop);
             }
             else if (state.phase === 'stop') {
@@ -718,6 +723,7 @@
             }
             else if (state.phase === 'go') {
                 state.speed += (1.25 - 0.000025 * state.speed * state.speed) * 10 * dt;
+                checkEvents(now);
                 if (state.speed >= state.vr + 15) { finish(); return; }
                 updateTape(state.speed); requestAnimationFrame(loop);
             }
@@ -753,8 +759,8 @@
         }
         function showSummary() {
             document.getElementById('rTargets').textContent = 'V1=' + state.v1 + ' / VR=' + state.vr + ' KT';
-            document.getElementById('rFailure').textContent = state.alert;
-            document.getElementById('rEcamSpd').textContent = state.speedAtFailure + ' KT';
+            document.getElementById('rFailure').textContent = state.failureTriggered ? state.alert : 'No event';
+            document.getElementById('rEcamSpd').textContent = state.failureTriggered ? (state.speedAtFailure + ' KT') : 'N/A';
             document.getElementById('rDecSpd').textContent = (state.speedAtDecision === null) ? 'No decision' : (state.autoRotated ? 'N/A (auto-rotate)' : (state.speedAtDecision + ' KT'));
             let react = 'N/A';
             if (state.failureTriggered && state.timeOfDecision !== null)
