@@ -741,26 +741,26 @@
             return candidates.length ? pick(candidates) : pick(failureEvents);
         }
 
-        // ---------- Audio (synthesised C-chord chime) ----------
+        // ---------- Audio (synthesised tone chime) ----------
         let audioCtx = null;
         function playChord() {
             try {
                 if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 if (audioCtx.state === 'suspended') audioCtx.resume();
                 const t = audioCtx.currentTime;
-                const freqs = [523.25, 659.25, 783.99];  // C5, E5, G5 — C major chord
                 const master = audioCtx.createGain();
+                const frequency = 1000;
+                const duration = 1.1;
                 master.gain.setValueAtTime(0.0001, t);
                 master.gain.exponentialRampToValueAtTime(0.35, t + 0.015);
-                master.gain.exponentialRampToValueAtTime(0.0001, t + 1.1);
+                master.gain.exponentialRampToValueAtTime(0.0001, t + duration);
                 master.connect(audioCtx.destination);
-                freqs.forEach(f => {
-                    const o = audioCtx.createOscillator();
-                    o.type = 'sine';
-                    o.frequency.setValueAtTime(f, t);
-                    o.connect(master);
-                    o.start(t); o.stop(t + 1.1);
-                });
+                const o = audioCtx.createOscillator();
+                o.type = 'sine';
+                o.frequency.setValueAtTime(frequency, t);
+                o.connect(master);
+                o.start(t);
+                o.stop(t + duration);
             } catch (e) { }
         }
         function playChime(count) {
@@ -910,7 +910,7 @@
                 state.timeOfFailure = now;
                 state.alert = state.failureAlert;
                 if (state.failureType === 'red') {
-                    playChime(3);
+                    playChime(5);
                     logEvent(state.alert, 'red');
                 } else if (state.failureType === 'amber') {
                     playChime(1);
