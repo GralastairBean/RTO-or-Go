@@ -648,6 +648,7 @@
             state = {
                 v1, split, vr, maxSpeed, failureSpeed, alert, isRed,
                 speed: 0, phase: 'roll', failureTriggered: false, hundredCalled: false,
+                v1Called: false, rotatedCalled: false,
                 speedAtFailure: null, timeOfFailure: null, choice: null, speedAtDecision: null, timeOfDecision: null,
                 autoRotated: false, vacated: 'N/A', startT: now, lastT: now
             };
@@ -679,6 +680,9 @@
                 if (state.speed >= 100 && !state.hundredCalled) {
                     state.hundredCalled = true; logEvent('"100 KTS"', 'call');
                 }
+                if (state.speed >= state.v1 && !state.v1Called) {
+                    state.v1Called = true; logEvent('\"VEE ONE\"', 'call');
+                }
                 if (state.speed >= state.failureSpeed && !state.failureTriggered) {
                     state.failureTriggered = true; state.speedAtFailure = Math.round(state.speed);
                     state.timeOfFailure = now;
@@ -686,6 +690,7 @@
                     logEvent(state.alert, state.isRed ? 'red' : 'amber');
                 }
                 if (state.speed >= state.vr) {
+                    if (!state.rotatedCalled) { state.rotatedCalled = true; logEvent('"ROTATE"', 'call'); }
                     if (state.choice === null) { state.choice = 'g'; state.autoRotated = true; logEvent('"GO"', 'good'); }
                     state.phase = (state.choice === 's') ? 'stop' : 'go';
                 }
