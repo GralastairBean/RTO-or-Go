@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sound Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: #eee;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            padding: 24px;
+        }
+        h1 {
+            margin: 0;
+            font-size: 1.6rem;
+            color: #6cf;
+        }
+        .controls, .params {
+            width: 100%;
+            max-width: 520px;
+            background: #1a1f28;
+            border: 1px solid #2f3746;
+            border-radius: 12px;
+            padding: 18px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.25);
+        }
+        .controls button {
+            width: 100%;
+            padding: 14px 18px;
+            border: none;
+            border-radius: 8px;
+            margin-top: 10px;
+            background: #22d3ee;
+            color: #111;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        .controls button:nth-child(2) {
+            background: #ffbb33;
+            color: #111;
+        }
+        .params label {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0 0;
+            gap: 12px;
+            color: #ccc;
+            font-size: .95rem;
+        }
+        .params input {
+            width: 160px;
+            padding: 8px 10px;
+            border-radius: 6px;
+            border: 1px solid #334155;
+            background: #0f172a;
+            color: #fff;
+        }
+        .hint {
+            color: #889;
+            font-size: .9rem;
+            max-width: 520px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Sound Test</h1>
+    <div class="controls">
+        <button id="singleBtn">Single Chime</button>
+        <button id="crcBtn">CRC Chime</button>
+    </div>
+    <div class="params">
+        <div><strong>Tone parameters</strong></div>
+        <label>
+            Frequency (Hz)
+            <input id="rootFreq" type="number" value="1000" step="1" min="100" max="2000">
+        </label>
+        <label>
+            Chime count
+            <input id="count" type="number" value="1" step="1" min="1" max="10">
+        </label>
+        <label>
+            Note length (ms)
+            <input id="length" type="number" value="1100" step="50" min="250" max="3000">
+        </label>
+    </div>
+    <div class="hint">Use the buttons to hear the sound. Adjust the frequency and length to tune the tone.</div>
+
+    <script>
+        // ---------- Audio (synthesised C-chord chime) ----------
+        let audioCtx = null;
+
+        function ensureAudioContext() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        function playChord() {
+            try {
+                const ctx = ensureAudioContext();
+                const t = ctx.currentTime;
+                const root = Number(document.getElementById('rootFreq').value) || 523.25;
+                const durationMs = Number(document.getElementById('length').value) || 1100;
+                const duration = durationMs / 1000;
+
+                const master = ctx.createGain();
+                master.gain.setValueAtTime(0.0001, t);
+                master.gain.exponentialRampToValueAtTime(0.35, t + 0.015);
+                master.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+                master.connect(ctx.destination);
+
+                const o = ctx.createOscillator();
+                o.type = 'sine';
+                o.frequency.setValueAtTime(root, t);
+                o.connect(master);
+                o.start(t);
+                o.stop(t + duration);
+            } catch (e) {
+                console.warn('Audio playback failed', e);
+            }
+        }
+
+        function playChime(count) {
+            if (!count || count <= 0) return;
+            for (let i = 0; i < count; i++) {
+                setTimeout(playChord, i * 300);
+            }
+        }
+
+        document.getElementById('singleBtn').addEventListener('click', () => {
+            document.getElementById('count').value = 1;
+            playChime(1);
+        });
+
+        document.getElementById('crcBtn').addEventListener('click', () => {
+            document.getElementById('count').value = 5;
+            playChime(5);
+        });
+    </script>
+</body>
+</html>
