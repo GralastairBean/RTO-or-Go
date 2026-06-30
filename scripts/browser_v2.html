@@ -696,7 +696,7 @@
             { text: "CREW: LOUD BANG", inhibited: false, type: 'other' },
 
             // WINDSHEAR
-            { text: '"WINDSHEAR AHEAD"', inhibited: true, type: 'red' },
+            { text: '"WINDSHEAR AHEAD"', inhibited: 'windshear', type: 'red' },
 
             // ATC
             { text: 'ATC: "STOP STOP STOP"', inhibited: false, type: 'other' },
@@ -704,7 +704,11 @@
         const rnd = (lo, hi) => Math.floor(Math.random() * (hi - lo + 1)) + lo;
         const pick = a => a[Math.floor(Math.random() * a.length)];
         function pickFailureEvent(speed) {
-            const candidates = speed >= 80 ? failureEvents.filter(e => !e.inhibited) : failureEvents.slice();
+            const candidates = failureEvents.filter(e => {
+                if (speed < 80) return true;
+                if (speed < 100) return e.inhibited !== true;
+                return e.inhibited !== true && e.inhibited !== 'windshear';
+            });
             return candidates.length ? pick(candidates) : pick(failureEvents);
         }
 
