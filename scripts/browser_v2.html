@@ -734,9 +734,9 @@
         // failure based on the current speed and each event's inhibit rule.
         function pickFailureEvent(speed) {
             const candidates = failureEvents.filter(e => {
-                if (speed < 80) return true;
-                if (speed < 100) return e.inhibited !== 'below_80';
-                return e.inhibited !== 'below_80' && e.inhibited !== 'windshear';
+                if (speed <= 80) return true;
+                if (speed <= 100) return e.inhibited !== 'above_80';
+                return e.inhibited !== 'above_80' && e.inhibited !== 'windshear';
             });
             return candidates.length ? pick(candidates) : pick(failureEvents);
         }
