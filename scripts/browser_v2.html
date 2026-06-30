@@ -670,6 +670,11 @@
 
     <script>
         // ---------- Event data ----------
+        // Inhibit logic...
+        //  - inhibited: false = valid any speed
+        //  - inhibited: true = valid < 80 kts
+        //  - inhibited: windhsear = valid < 100 kts
+        //  - inhibited: negSpd = TO DO FOR NEG SPEED TREND
         const failureEvents = [
             // ENG
             { text: "ENG 1 FIRE", inhibited: false, type: 'red' },
