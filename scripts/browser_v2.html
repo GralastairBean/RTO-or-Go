@@ -907,24 +907,18 @@
                     logEvent(state.alert, 'info');
                 }
             }
-            if (state.speed >= state.vr) {
-                if (!state.rotatedCalled) {
-                    state.rotatedCalled = true; logEvent('"ROTATE"', 'call');
-                    state.vrTime = now;
-                    // keep decision buttons active so the user can still choose STOP or GO after VR
-                    if (state.vrTimer) clearTimeout(state.vrTimer);
-                    state.vrTimer = setTimeout(() => {
-                        try {
-                            if (!state || state.choice !== null) return;
-                            // end simulation (no-action ends after 2s at VR)
-                            state.phase = 'go';
-                            finish();
-                        } catch (e) { }
-                    }, 2000);
-                }
+            if (!state.rotatedCalled && state.choice === 'g' && state.speed >= state.vr && state.speed < state.vr + 30) {
+                state.rotatedCalled = true;
+                logEvent('"ROTATE"', 'call');
+                state.vrTime = now;
+            }
+            if (!state.rotatedCalled && state.speed >= state.vr + 20) {
+                state.phase = 'go';
+                finishOverrun();
             }
         }
         function loop(now) {
+            if (!state || state.phase === 'ended') return;
             const dt = Math.min((now - state.lastT) / 1000, 0.05); state.lastT = now;
 
             if (state.phase === 'roll') {
@@ -945,17 +939,32 @@
             }
         }
         function makeDecision(ch) {
-            if (!state || state.choice !== null) return;
+            if (!state || state.phase === 'ended' || state.choice !== null) return;
             state.choice = ch; state.speedAtDecision = Math.round(state.speed);
             state.timeOfDecision = performance.now();
             if (ch === 's') { logEvent('"STOP"', 'red'); }
             else { logEvent('"GO"', 'good'); }
             state.phase = (ch === 's') ? 'stop' : 'go';
-            // cancel the pending auto-finish if the user makes a decision
-            if (state.vrTimer) { clearTimeout(state.vrTimer); state.vrTimer = null; }
+            if (ch === 'g' && !state.rotatedCalled && state.speed >= state.vr && state.speed < state.vr + 20) {
+                state.rotatedCalled = true;
+                logEvent('"ROTATE"', 'call');
+                state.vrTime = performance.now();
+            }
             stopBtn.disabled = true; goBtn.disabled = true;
         }
+        function finishOverrun() {
+            if (!state || state.phase === 'ended') return;
+            stopBtn.disabled = true; goBtn.disabled = true;
+            try { if (state && state.vrTimer) { clearTimeout(state.vrTimer); state.vrTimer = null; } } catch (e) { }
+            state.phase = 'ended';
+            state.resultText = 'OVERRUN (NO ROTATE)';
+            state.ok = false;
+            state.resultClass = 'bad';
+            state.vacated = 'N/A';
+            showSummary();
+        }
         function finish() {
+            if (!state || state.phase === 'ended') return;
             stopBtn.disabled = true; goBtn.disabled = true;
             // clear any pending VR timer
             try { if (state && state.vrTimer) { clearTimeout(state.vrTimer); state.vrTimer = null; } } catch (e) { }
@@ -970,9 +979,15 @@
                     successfulRTO = true;
                 }
             } else {
-                resultText = 'TAKEOFF COMPLETED';
-                ok = true;
+                if (state.choice === 'g' && state.speedAtDecision !== null && state.speedAtDecision > state.vr + 5) {
+                    resultText = 'TAKEOFF - LATE ROTATION';
+                    ok = false;
+                } else {
+                    resultText = 'TAKEOFF COMPLETED';
+                    ok = true;
+                }
             }
+            state.phase = 'ended';
             state.resultText = resultText; state.ok = ok;
 
             if (successfulRTO) { vacatePanel.style.display = 'block'; vacatePanel.scrollIntoView({ behavior: 'smooth' }); }
@@ -990,7 +1005,7 @@
             document.getElementById('rVacated').textContent = state.vacated;
             const rRes = document.getElementById('rResult');
             rRes.textContent = state.resultText;
-            rRes.className = 'val ' + (state.resultText === 'RTO > V1' ? 'bad' : 'good');
+            rRes.className = 'val ' + ((state.resultText === 'RTO > V1' || state.resultText === 'TAKEOFF - LATE ROTATION' || state.resultText === 'OVERRUN (NO ROTATE)') ? 'bad' : 'good');
             resultsEl.style.display = 'block'; resultsEl.scrollIntoView({ behavior: 'smooth' });
             setStartMode('reset');
             startBtn.disabled = false;
