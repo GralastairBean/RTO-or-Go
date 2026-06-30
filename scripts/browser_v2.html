@@ -872,10 +872,16 @@
             try { if (state && state.vrTimer) { clearTimeout(state.vrTimer); state.vrTimer = null; } } catch (e) { }
             let resultText, ok, successfulRTO = false;
             if (state.choice === 's') {
-                if (state.speedAtDecision > state.v1) { resultText = 'OVERRUN (RTO > V1)'; ok = false; }
-                else { resultText = 'SUCCESSFUL RTO'; ok = true; successfulRTO = true; }
+                if (state.speedAtDecision > state.v1) {
+                    resultText = 'RTO > V1';
+                    ok = false;
+                } else {
+                    resultText = 'RTO';
+                    ok = true;
+                    successfulRTO = true;
+                }
             } else {
-                resultText = state.autoRotated ? 'TAKEOFF (AUTO ROTATE @ VR)' : 'TAKEOFF (CONTINUED)';
+                resultText = 'TAKEOFF COMPLETED';
                 ok = true;
             }
             state.resultText = resultText; state.ok = ok;
@@ -895,7 +901,7 @@
             document.getElementById('rVacated').textContent = state.vacated;
             const rRes = document.getElementById('rResult');
             rRes.textContent = state.resultText;
-            rRes.className = 'val ' + (state.ok ? 'good' : 'bad');
+            rRes.className = 'val ' + (state.resultText === 'RTO > V1' ? 'bad' : 'good');
             resultsEl.style.display = 'block'; resultsEl.scrollIntoView({ behavior: 'smooth' });
             setStartMode('reset');
             startBtn.disabled = false;
