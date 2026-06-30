@@ -302,8 +302,31 @@
             font-weight: bold;
         }
 
+        .log-line.crew {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            color: #aaa;
+        }
+
+        .log-line.crew .crew-label,
+        .log-line.crew .crew-text {
+            display: block;
+            font-weight: bold;
+        }
+
+        .log-line.crew .crew-label {
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.92rem;
+        }
+
+        .log-line.crew .crew-text {
+            font-size: 1rem;
+        }
+
         .log-line.info .m {
-            color: #cdd;
+            color: #fff;
         }
 
         .log-line.call .m {
@@ -691,14 +714,14 @@
             { text: "FUEL PUMP 2 LO PRESS", inhibited: true, type: 'amber' },
 
             // CREW OBSERVATION
-            { text: "CREW: EGT OVERLIMIT (NO ECAM)", inhibited: false, type: 'other' },
-            { text: "CREW: N1 OVERSPEED (NO ECAM)", inhibited: false, type: 'other' },
-            { text: "CREW: LOUD BANG", inhibited: false, type: 'other' },
+            { text: "EGT OVERLIMIT (NO ECAM)", inhibited: false, type: 'crew' },
+            { text: "N1 OVERSPEED (NO ECAM)", inhibited: false, type: 'crew' },
+            { text: "LOUD BANG", inhibited: false, type: 'crew' },
+            { text: "negative speed trend", inhibited: 'false', type: 'crew' },
 
             // WINDSHEAR
             { text: '"WINDSHEAR AHEAD"', inhibited: 'windshear', type: 'other' },
             { text: '"MONITOR RADAR DISPLAY"', inhibited: 'windshear', type: 'other' },
-            { text: "CREW: negative speed trend", inhibited: 'false', type: 'other' },
 
             // ATC
             { text: 'ATC: "STOP STOP STOP"', inhibited: false, type: 'other' },
@@ -806,7 +829,11 @@
         function logEvent(msg, type) {
             const line = document.createElement('div');
             line.className = 'log-line ' + (type || 'info');
-            line.innerHTML = '<span class="m">' + msg + '</span>';
+            if (type === 'crew') {
+                line.innerHTML = '<span class="crew-label">CREW OBSERVATION:</span><span class="crew-text">' + msg + '</span>';
+            } else {
+                line.innerHTML = '<span class="m">' + msg + '</span>';
+            }
             logEl.appendChild(line);
             logEl.scrollTop = logEl.scrollHeight;
         }
@@ -884,6 +911,8 @@
                 } else if (state.failureType === 'amber') {
                     playChime(1);
                     logEvent(state.alert, 'amber');
+                } else if (state.failureType === 'crew') {
+                    logEvent(state.alert, 'crew');
                 } else {
                     state.failureType = 'other';
                     logEvent(state.alert, 'info');
