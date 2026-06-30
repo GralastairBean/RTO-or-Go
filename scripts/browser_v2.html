@@ -965,6 +965,7 @@
             stopBtn.disabled = true; goBtn.disabled = true;
             setStartMode('start');
             startBtn.disabled = false;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
         // init: generate and display the first preset V speeds
