@@ -174,11 +174,9 @@
             color: #22d3ee;
             font-size: 1.25rem;
             font-weight: bold;
-            padding: 0 6px;
-            border: 1px solid #22d3ee;
-            border-radius: 3px;
+            padding: 0 4px;
+            border: none;
             background: transparent;
-            box-shadow: none;
         }
 
         #capTop {
@@ -340,11 +338,11 @@
         }
 
         .targets b.v1 {
-            color: #16e016;
+            color: #22d3ee;
         }
 
         .targets b.vr {
-            color: #22d3ee;
+            color: #16e016;
         }
 
         .btn-row {
@@ -649,7 +647,7 @@
             buildTape(maxSpeed);
             addBug(v1, 'v1', '1');
             addBug(vr, 'vr', 'R');
-            v1Value.textContent = 'V1=' + v1;
+            v1Value.textContent = v1;
 
             capTop.textContent = '';
             capBot.textContent = '';
@@ -746,7 +744,7 @@
         document.addEventListener('keydown', e => { if (e.key.toLowerCase() === 's') makeDecision('s'); if (e.key.toLowerCase() === 'g') makeDecision('g'); });
 
         // init
-        v1Value.textContent = 'V1=150';
+        v1Value.textContent = '150';
         capTop.textContent = '';
         capBot.textContent = '';
         buildTape(180);
