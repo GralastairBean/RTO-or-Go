@@ -653,22 +653,43 @@
     </div>
 
     <script>
-        // ---------- Alert data ----------
-        const uninhibited = [
-            "ENG 1 FIRE", "ENG 2 FIRE", "ENG 1 FAIL", "ENG 2 FAIL",
-            "ENG 1 OIL PR LO", "ENG 2 OIL PR LO",
-            'ATC: "STOP STOP STOP"', "SMOKE FWD CARGO",
-            "CREW: EGT OVERLIMIT (NO ECAM)", "CREW: N1 OVERSPEED (NO ECAM)", "CREW: LOUD BANG",
-        ];
-        const inhibited = [
-            "AIR PACK 1 FAULT", "ENG 1 EGT OVERLIMIT", "ENG 2 EPR MODE FAULT", "ENG 1 N1 OVERLIMIT",
-            "ENG 2 OIL HI TEMP", "ENG 1 REV UNLOCKED", "ENG 2 STALL", "ENG THRUST LOSS",
-            "HYD Y SYS LO PR", "HYD B SYS LO PR", "HYD G SYS LO PR", "FUEL PUMP 2 LO PRESS",
-            "F/CTL L INR AIL FAULT", "F/CTL SEC 1 FAULT", "F/CTL SEC 2 FAULT", "F/CTL PRIM 1 FAULT",
-            '"WINDSHEAR AHEAD"',
+        // ---------- Event data ----------
+        const failureEvents = [
+            { text: "ENG 1 FIRE", inhibited: false, type: 'red' },
+            { text: "ENG 2 FIRE", inhibited: false, type: 'red' },
+            { text: "ENG 1 FAIL", inhibited: false, type: 'amber' },
+            { text: "ENG 2 FAIL", inhibited: false, type: 'amber' },
+            { text: "ENG 1 OIL PR LO", inhibited: false, type: 'amber' },
+            { text: "ENG 2 OIL PR LO", inhibited: false, type: 'amber' },
+            { text: 'ATC: "STOP STOP STOP"', inhibited: false, type: 'other' },
+            { text: "SMOKE FWD CARGO", inhibited: false, type: 'red' },
+            { text: "CREW: EGT OVERLIMIT (NO ECAM)", inhibited: false, type: 'other' },
+            { text: "CREW: N1 OVERSPEED (NO ECAM)", inhibited: false, type: 'other' },
+            { text: "CREW: LOUD BANG", inhibited: false, type: 'other' },
+            { text: "AIR PACK 1 FAULT", inhibited: true, type: 'amber' },
+            { text: "ENG 1 EGT OVERLIMIT", inhibited: true, type: 'amber' },
+            { text: "ENG 2 EPR MODE FAULT", inhibited: true, type: 'amber' },
+            { text: "ENG 1 N1 OVERLIMIT", inhibited: true, type: 'amber' },
+            { text: "ENG 2 OIL HI TEMP", inhibited: true, type: 'amber' },
+            { text: "ENG 1 REV UNLOCKED", inhibited: true, type: 'amber' },
+            { text: "ENG 2 STALL", inhibited: true, type: 'amber' },
+            { text: "ENG THRUST LOSS", inhibited: true, type: 'amber' },
+            { text: "HYD Y SYS LO PR", inhibited: true, type: 'amber' },
+            { text: "HYD B SYS LO PR", inhibited: true, type: 'amber' },
+            { text: "HYD G SYS LO PR", inhibited: true, type: 'amber' },
+            { text: "FUEL PUMP 2 LO PRESS", inhibited: true, type: 'amber' },
+            { text: "F/CTL L INR AIL FAULT", inhibited: true, type: 'amber' },
+            { text: "F/CTL SEC 1 FAULT", inhibited: true, type: 'amber' },
+            { text: "F/CTL SEC 2 FAULT", inhibited: true, type: 'amber' },
+            { text: "F/CTL PRIM 1 FAULT", inhibited: true, type: 'amber' },
+            { text: '"WINDSHEAR AHEAD"', inhibited: true, type: 'red' },
         ];
         const rnd = (lo, hi) => Math.floor(Math.random() * (hi - lo + 1)) + lo;
         const pick = a => a[Math.floor(Math.random() * a.length)];
+        function pickFailureEvent(speed) {
+            const candidates = speed >= 80 ? failureEvents.filter(e => !e.inhibited) : failureEvents.slice();
+            return candidates.length ? pick(candidates) : pick(failureEvents);
+        }
 
         // ---------- Audio (synthesised C-chord chime) ----------
         let audioCtx = null;
@@ -691,6 +712,12 @@
                     o.start(t); o.stop(t + 1.1);
                 });
             } catch (e) { }
+        }
+        function playChime(count) {
+            if (!count || count <= 0) return;
+            for (let i = 0; i < count; i++) {
+                setTimeout(playChord, i * 300);
+            }
         }
 
         // ---------- DOM ----------
@@ -777,14 +804,17 @@
             } else {
                 v1 = rnd(135, 160); split = rnd(5, 12); vr = v1 + split;
             }
-            const maxSpeed = vr + 20, failureSpeed = rnd(5, vr);
-            let alert, isRed;
-            if (failureSpeed < 100) { alert = pick(uninhibited.concat(inhibited)); isRed = uninhibited.includes(alert); }
-            else { alert = pick(uninhibited); isRed = true; }
+            const failureSpeed = rnd(5, vr);
+            const failureEvent = pickFailureEvent(failureSpeed);
+            const maxSpeed = vr + 20;
 
             const now = performance.now();
             state = {
-                v1, split, vr, maxSpeed, failureSpeed, alert, isRed,
+                v1, split, vr, maxSpeed,
+                failureSpeed,
+                failureAlert: failureEvent.text,
+                failureType: failureEvent.type,
+                failureInhibited: failureEvent.inhibited,
                 speed: 0, phase: 'roll', failureTriggered: false, hundredCalled: false,
                 v1Called: false, rotatedCalled: false,
                 vrTime: null, vrTimer: null,
@@ -824,8 +854,17 @@
             if (state.speed >= state.failureSpeed && !state.failureTriggered) {
                 state.failureTriggered = true; state.speedAtFailure = Math.round(state.speed);
                 state.timeOfFailure = now;
-                playChord();
-                logEvent(state.alert, state.isRed ? 'red' : 'amber');
+                state.alert = state.failureAlert;
+                if (state.failureType === 'red') {
+                    playChime(3);
+                    logEvent(state.alert, 'red');
+                } else if (state.failureType === 'amber') {
+                    playChime(1);
+                    logEvent(state.alert, 'amber');
+                } else {
+                    state.failureType = 'other';
+                    logEvent(state.alert, 'info');
+                }
             }
             if (state.speed >= state.vr) {
                 if (!state.rotatedCalled) {
