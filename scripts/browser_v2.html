@@ -305,24 +305,13 @@
         .log-line.crew {
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 2px;
             color: #aaa;
         }
 
-        .log-line.crew .crew-label,
-        .log-line.crew .crew-text {
-            display: block;
+        .log-line.crew .m {
+            color: #aaa;
             font-weight: bold;
-        }
-
-        .log-line.crew .crew-label {
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-size: 0.92rem;
-        }
-
-        .log-line.crew .crew-text {
-            font-size: 1rem;
         }
 
         .log-line.info .m {
@@ -830,7 +819,7 @@
             const line = document.createElement('div');
             line.className = 'log-line ' + (type || 'info');
             if (type === 'crew') {
-                line.innerHTML = '<span class="crew-label">CREW OBSERVATION:</span><span class="crew-text">' + msg + '</span>';
+                line.innerHTML = '<span class="m">CREW OBSERVATION</span><span class="m">' + msg + '</span>';
             } else {
                 line.innerHTML = '<span class="m">' + msg + '</span>';
             }
