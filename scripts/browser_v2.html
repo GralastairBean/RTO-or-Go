@@ -478,6 +478,10 @@
             color: #ff5555;
         }
 
+        .res-row .val.warn {
+            color: #ffbb33;
+        }
+
         @media (max-width: 720px) {
             body {
                 padding: 6px;
@@ -980,10 +984,10 @@
                 }
             } else {
                 if (state.choice === 'g' && state.speedAtDecision !== null && state.speedAtDecision > state.vr + 5) {
-                    resultText = 'TAKEOFF - LATE ROTATION';
+                    resultText = 'TAKEOFF (LATE ROTATION)';
                     ok = false;
                 } else {
-                    resultText = 'TAKEOFF COMPLETED';
+                    resultText = 'TAKEOFF';
                     ok = true;
                 }
             }
@@ -1005,7 +1009,13 @@
             document.getElementById('rVacated').textContent = state.vacated;
             const rRes = document.getElementById('rResult');
             rRes.textContent = state.resultText;
-            rRes.className = 'val ' + ((state.resultText === 'RTO > V1' || state.resultText === 'TAKEOFF - LATE ROTATION' || state.resultText === 'OVERRUN (NO ROTATE)') ? 'bad' : 'good');
+            if (state.resultText === 'TAKEOFF (LATE ROTATION)') {
+                rRes.className = 'val warn';
+            } else if (state.resultText === 'RTO > V1' || state.resultText === 'OVERRUN (NO ROTATE)') {
+                rRes.className = 'val bad';
+            } else {
+                rRes.className = 'val good';
+            }
             resultsEl.style.display = 'block'; resultsEl.scrollIntoView({ behavior: 'smooth' });
             setStartMode('reset');
             startBtn.disabled = false;
