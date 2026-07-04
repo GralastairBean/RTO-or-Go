@@ -669,13 +669,29 @@
     </div>
 
     <script>
-        // ---------- Event data ----------
+        // ---------- EVENT DATA ----------
         // Inhibit properties logic...
         //  - inhibited: 'nil' = never inhibited
         //  - inhibited: 'above_80' = inhibited above 80 kts
         //  - inhibited: 'windshear' = inhibited above 100 kts
         //  - inhibited: 'neg_trend' = example future rule for negative speed trend (TO DO)
         const failureEvents = [
+            // --------EVENT LIST--------
+            // -----------A330-----------
+            // A-ICE                
+            // AIR
+            { text: "AIR PACK 1 FAULT", inhibited: 'above_80', type: 'amber' },
+            // APU
+            // APU FIRE
+            // AUTO FLT
+            // BRAKES
+            // CAB PR
+            // COM
+            // COND
+            // CONFIG
+            // DOOR
+            // EIS
+            // ELEC
             // ENG
             { text: "ENG 1 FIRE", inhibited: 'nil', type: 'red' },
             { text: "ENG 2 FIRE", inhibited: 'nil', type: 'red' },
@@ -690,41 +706,43 @@
             { text: "ENG 1 REV UNLOCKED", inhibited: 'above_80', type: 'amber' },
             { text: "ENG 2 STALL", inhibited: 'above_80', type: 'amber' },
             { text: "ENG THRUST LOSS", inhibited: 'above_80', type: 'amber' },
-
-            // SMOKE
-            { text: "SMOKE FWD CARGO", inhibited: 'nil', type: 'red' },
-
-            // AIR
-            { text: "AIR PACK 1 FAULT", inhibited: 'above_80', type: 'amber' },
-
-            // HYD
-            { text: "HYD Y SYS LO PR", inhibited: 'above_80', type: 'amber' },
-            { text: "HYD B SYS LO PR", inhibited: 'above_80', type: 'amber' },
-            { text: "HYD G SYS LO PR", inhibited: 'above_80', type: 'amber' },
-
-            // F/CTL 
+            // F/CTL
             { text: "F/CTL PRIM 1 FAULT", inhibited: 'above_80', type: 'amber' },
             { text: "F/CTL L INR AIL FAULT", inhibited: 'above_80', type: 'amber' },
             { text: "F/CTL SEC 1 FAULT", inhibited: 'above_80', type: 'amber' },
             { text: "F/CTL SEC 2 FAULT", inhibited: 'above_80', type: 'amber' },
-
             // FUEL
             { text: "FUEL PUMP 2 LO PRESS", inhibited: 'above_80', type: 'amber' },
-
-            // CREW OBSERVATION
+            // FWS
+            // HYD
+            { text: "HYD Y SYS LO PR", inhibited: 'above_80', type: 'amber' },
+            { text: "HYD B SYS LO PR", inhibited: 'above_80', type: 'amber' },
+            { text: "HYD G SYS LO PR", inhibited: 'above_80', type: 'amber' },
+            // L/G
+            // MISC
+            // NAV
+            // SMOKE
+            { text: "SMOKE FWD CARGO", inhibited: 'nil', type: 'red' },
+            // SURV
+            // T.O
+            // VENT
+            // WHEEL
+            // CREW OBSERVATIONS
             { text: "EGT OVERLIMIT (NO ECAM)", inhibited: 'nil', type: 'crew' },
             { text: "N1 OVERSPEED (NO ECAM)", inhibited: 'nil', type: 'crew' },
             { text: "LOUD BANG", inhibited: 'nil', type: 'crew' },
             { text: "negative speed trend", inhibited: 'nil', type: 'crew' },
             { text: "10kt speed discrepancy", inhibited: 'nil', type: 'crew' },
             { text: "30kt speed discrepancy", inhibited: 'nil', type: 'crew' },
-
             // WINDSHEAR
             { text: '"WINDSHEAR AHEAD"', inhibited: 'windshear', type: 'other' },
             { text: '"MONITOR RADAR DISPLAY"', inhibited: 'windshear', type: 'other' },
-
-            // ATC
+            // OTHER
             { text: 'ATC: "STOP STOP STOP"', inhibited: 'nil', type: 'other' },
+            { text: 'CABIN CALL TONE"', inhibited: 'nil', type: 'other' },
+
+            // -----------A350-----------
+            // TO DO
         ];
         const rnd = (lo, hi) => Math.floor(Math.random() * (hi - lo + 1)) + lo;
         const pick = a => a[Math.floor(Math.random() * a.length)];
