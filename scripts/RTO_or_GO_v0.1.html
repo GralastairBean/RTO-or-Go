@@ -873,8 +873,14 @@
             const split = vr - v1;
             // consume preset so subsequent runs don't reuse it unless reset called
             presetV1 = presetVr = null;
-            const failureSpeed = rnd(5, vr);
-            const failureEvent = pickFailureEvent(failureSpeed);
+            const failureSpeed = presetFailureSpeed !== null ? presetFailureSpeed : rnd(5, vr);
+            const failureEvent = presetFailureSpeed !== null
+                ? { text: presetFailureAlert, type: presetFailureType, inhibited: presetFailureInhibited }
+                : pickFailureEvent(failureSpeed);
+            presetFailureSpeed = null;
+            presetFailureAlert = null;
+            presetFailureType = null;
+            presetFailureInhibited = null;
             const maxSpeed = vr + 20;
 
             const now = performance.now();
@@ -1059,16 +1065,27 @@
         // Generate v-speeds for initial display and for use during the simulation
         let presetV1 = null;
         let presetVr = null;
+        let presetFailureSpeed = null;
+        let presetFailureAlert = null;
+        let presetFailureType = null;
+        let presetFailureInhibited = null;
 
         function generatePreset() {
             const v1 = rnd(135, 160);
             const vr = rnd(v1 + 5, 170);
             const split = vr - v1;
             presetV1 = v1; presetVr = vr;
+            const failureSpeed = rnd(5, vr);
+            const failureEvent = pickFailureEvent(failureSpeed);
+            presetFailureSpeed = failureSpeed;
+            presetFailureAlert = failureEvent.text;
+            presetFailureType = failureEvent.type;
+            presetFailureInhibited = failureEvent.inhibited;
             v1Value.textContent = String(v1);
             targetsEl.innerHTML = 'V1=<b class="v1">' + v1 + '</b> KT &nbsp; VR=<b class="vr">' + vr + '</b> KT &nbsp; (Split ' + split + ')';
             buildTape(vr + 20);
             updateTape(0);
+            console.log('[RTO/GO] Upcoming failure selected:', presetFailureAlert, '| Trigger speed:', presetFailureSpeed, 'KT');
         }
 
         function setStartMode(mode) {
