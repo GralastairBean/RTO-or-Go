@@ -2,7 +2,15 @@
 
 ## Overview
 
+## How to Use
+- You must press Go or STOP
+- If you don't press GO the aircraft will not rotate... you have to make a decision!
+
 ## How it Works
+- Randomly generates v-speeds
+- Randomly chooses a failure
+- Checks allowed speed for this failure
+- Chooses a speed between the allowed values for that failure as well as a global rule of 5 kt - VR-5 kt
 
 ### v-speed generation
 v1 is randomly generated between 135 and 160 (to be confirmed)
@@ -17,6 +25,7 @@ split (vr-v1) is calculated for display only
 ### Takeoff Inhibit
 - Vast majority inhibited > 80 kts.
 - PWS inhibited > 100 kts.
+- The simulator only generates events between 5 and VR-5 kts because you need to press GO to rotate.
 
 ## Supported Types
 - Current implementation is 330 only
