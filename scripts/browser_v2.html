@@ -900,7 +900,7 @@
                 state.hundredCalled = true; logEvent('"100 KTS"', 'call');
             }
             if (state.speed >= state.v1 && !state.v1Called) {
-                state.v1Called = true; logEvent('"VEE ONE"', 'call');
+                state.v1Called = true; logEvent('"V1"', 'call');
             }
             if (state.speed >= state.failureSpeed && !state.failureTriggered) {
                 state.failureTriggered = true; state.speedAtFailure = Math.round(state.speed);
