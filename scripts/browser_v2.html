@@ -856,7 +856,9 @@
                 // consume preset so subsequent runs don't reuse it unless reset called
                 presetV1 = presetVr = null;
             } else {
-                v1 = rnd(135, 160); split = rnd(5, 12); vr = v1 + split;
+                v1 = rnd(135, 160);
+                vr = rnd(v1 + 5, 170);
+                split = vr - v1;
             }
             const failureSpeed = rnd(5, vr);
             const failureEvent = pickFailureEvent(failureSpeed);
@@ -1051,8 +1053,8 @@
 
         function generatePreset() {
             const v1 = rnd(135, 160);
-            const split = rnd(5, 12);
-            const vr = v1 + split;
+            const vr = rnd(v1 + 5, 170);
+            const split = vr - v1;
             presetV1 = v1; presetVr = vr;
             v1Value.textContent = String(v1);
             targetsEl.innerHTML = 'V1=<b class="v1">' + v1 + '</b> KT &nbsp; VR=<b class="vr">' + vr + '</b> KT &nbsp; (Split ' + split + ')';
