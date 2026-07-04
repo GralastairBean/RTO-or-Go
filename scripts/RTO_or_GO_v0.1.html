@@ -757,15 +757,29 @@
         // ---------- Decision tree implementation ----------
         // This is the failure-event selection section that chooses a
         // failure based on the current speed and the event's allowed window.
-        function isEventAllowed(event, speed) {
-            if (!event.allowed) return true;
-            const min = Number.isFinite(event.allowed.min) ? event.allowed.min : 0;
-            const max = Number.isFinite(event.allowed.max) ? event.allowed.max : Infinity;
-            return speed >= min && speed <= max;
-        }
-        function pickFailureEvent(speed) {
-            const candidates = failureEvents.filter(e => isEventAllowed(e, speed));
-            return candidates.length ? pick(candidates) : null;
+        function pickFailureEvent(upperBound) {
+            const event = pick(failureEvents);
+            if (!event) return null;
+
+            const globalMin = 5;
+            const globalMax = Number.isFinite(upperBound) ? Math.max(globalMin, upperBound - 5) : 165;
+            const eventMin = Number.isFinite(event.allowed && event.allowed.min) ? event.allowed.min : globalMin;
+            const eventMax = Number.isFinite(event.allowed && event.allowed.max) ? event.allowed.max : globalMax;
+            const low = Math.max(globalMin, eventMin);
+            const high = Math.min(globalMax, eventMax);
+
+            if (!Number.isFinite(low) || !Number.isFinite(high) || low > high) {
+                const fallback = Math.max(globalMin, Math.min(globalMax, globalMin));
+                return {
+                    event,
+                    failureSpeed: fallback
+                };
+            }
+
+            return {
+                event,
+                failureSpeed: rnd(low, high)
+            };
         }
 
         // ---------- Audio (synthesised tone chime) ----------
@@ -882,23 +896,24 @@
             const split = vr - v1;
             // consume preset so subsequent runs don't reuse it unless reset called
             presetV1 = presetVr = null;
-            const failureSpeed = presetFailureSpeed !== null ? presetFailureSpeed : rnd(5, vr);
-            const failureEvent = presetFailureSpeed !== null
-                ? { text: presetFailureAlert, type: presetFailureType, allowed: presetFailureAllowed }
-                : pickFailureEvent(failureSpeed);
+            const failureSelection = presetFailureSpeed !== null
+                ? { event: { text: presetFailureAlert, type: presetFailureType, allowed: presetFailureAllowed }, failureSpeed: presetFailureSpeed }
+                : pickFailureEvent(vr);
             presetFailureSpeed = null;
             presetFailureAlert = null;
             presetFailureType = null;
             presetFailureAllowed = null;
             const maxSpeed = vr + 20;
+            const failureEvent = failureSelection ? failureSelection.event : null;
+            const failureSpeed = failureSelection ? failureSelection.failureSpeed : null;
 
             const now = performance.now();
             state = {
                 v1, split, vr, maxSpeed,
                 failureSpeed,
-                failureAlert: failureEvent.text,
-                failureType: failureEvent.type,
-                failureAllowed: failureEvent.allowed,
+                failureAlert: failureEvent ? failureEvent.text : 'No event',
+                failureType: failureEvent ? failureEvent.type : 'info',
+                failureAllowed: failureEvent ? failureEvent.allowed : null,
                 speed: 0, phase: 'roll', failureTriggered: false, hundredCalled: false,
                 v1Called: false, rotatedCalled: false,
                 vrTime: null, vrTimer: null,
@@ -1084,12 +1099,13 @@
             const vr = rnd(v1 + 5, 170);
             const split = vr - v1;
             presetV1 = v1; presetVr = vr;
-            const failureSpeed = rnd(5, vr);
-            const failureEvent = pickFailureEvent(failureSpeed);
+            const failureSelection = pickFailureEvent(vr);
+            const failureSpeed = failureSelection ? failureSelection.failureSpeed : null;
+            const failureEvent = failureSelection ? failureSelection.event : null;
             presetFailureSpeed = failureSpeed;
-            presetFailureAlert = failureEvent.text;
-            presetFailureType = failureEvent.type;
-            presetFailureAllowed = failureEvent.allowed;
+            presetFailureAlert = failureEvent ? failureEvent.text : null;
+            presetFailureType = failureEvent ? failureEvent.type : null;
+            presetFailureAllowed = failureEvent ? failureEvent.allowed : null;
             v1Value.textContent = String(v1);
             targetsEl.innerHTML = 'V1=<b class="v1">' + v1 + '</b> KT &nbsp; VR=<b class="vr">' + vr + '</b> KT &nbsp; (Split ' + split + ')';
             buildTape(vr + 20);
