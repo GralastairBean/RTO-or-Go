@@ -670,21 +670,21 @@
 
     <script>
         // ---------- EVENT DATA ----------
-        // Inhibit properties logic...
-        //  - inhibited: 'nil' = never inhibited
-        //  - inhibited: 'above_80' = inhibited above 80 kts
-        //  - inhibited: 'windshear' = inhibited above 100 kts
-        //  - inhibited: 'neg_trend' = example future rule for negative speed trend (TO DO)
+        // Allowed-speed logic:
+        //  - allowed: null = always available at any speed
+        //  - allowed: { min: 0, max: 80 } = only available inside that speed window
+        //  - allowed: { min: 65, max: 100 } = available in a specific window
         const failureEvents = [
             // --------EVENT LIST--------
             // -----------A330-----------
-            // A-ICE                
+            // A-ICE
             // AIR
-            { text: "AIR PACK 1 FAULT", inhibited: 'above_80', type: 'amber' },
+            { text: "AIR PACK 1 FAULT", allowed: { min: 0, max: 80 }, type: 'amber' },
             // APU
             // APU FIRE
             // AUTO FLT
             // BRAKES
+            { text: "BRAKES HOT", allowed: { min: 0, max: 80 }, type: 'amber' },
             // CAB PR
             // COM
             // COND
@@ -693,53 +693,60 @@
             // EIS
             // ELEC
             // ENG
-            { text: "ENG 1 FIRE", inhibited: 'nil', type: 'red' },
-            { text: "ENG 2 FIRE", inhibited: 'nil', type: 'red' },
-            { text: "ENG 1 FAIL", inhibited: 'nil', type: 'amber' },
-            { text: "ENG 2 FAIL", inhibited: 'nil', type: 'amber' },
-            { text: "ENG 1 OIL PR LO", inhibited: 'nil', type: 'amber' },
-            { text: "ENG 2 OIL PR LO", inhibited: 'nil', type: 'amber' },
-            { text: "ENG 1 EGT OVERLIMIT", inhibited: 'above_80', type: 'amber' },
-            { text: "ENG 2 EPR MODE FAULT", inhibited: 'above_80', type: 'amber' },
-            { text: "ENG 1 N1 OVERLIMIT", inhibited: 'above_80', type: 'amber' },
-            { text: "ENG 2 OIL HI TEMP", inhibited: 'above_80', type: 'amber' },
-            { text: "ENG 1 REV UNLOCKED", inhibited: 'above_80', type: 'amber' },
-            { text: "ENG 2 STALL", inhibited: 'above_80', type: 'amber' },
-            { text: "ENG THRUST LOSS", inhibited: 'above_80', type: 'amber' },
+            { text: "ENG 1 FIRE", allowed: null, type: 'red' },
+            { text: "ENG 2 FIRE", allowed: null, type: 'red' },
+            { text: "ENG 1 FAIL", allowed: null, type: 'amber' },
+            { text: "ENG 2 FAIL", allowed: null, type: 'amber' },
+            { text: "ENG 1 OIL PR LO", allowed: null, type: 'amber' },
+            { text: "ENG 2 OIL PR LO", allowed: null, type: 'amber' },
+            { text: "ENG 1 EGT OVERLIMIT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "ENG 2 EPR MODE FAULT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "ENG 1 N1 OVERLIMIT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "ENG 2 OIL HI TEMP", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "ENG 1 REV UNLOCKED", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "ENG 2 STALL", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "ENG THRUST LOSS", allowed: { min: 0, max: 80 }, type: 'amber' },
             // F/CTL
-            { text: "F/CTL PRIM 1 FAULT", inhibited: 'above_80', type: 'amber' },
-            { text: "F/CTL L INR AIL FAULT", inhibited: 'above_80', type: 'amber' },
-            { text: "F/CTL SEC 1 FAULT", inhibited: 'above_80', type: 'amber' },
-            { text: "F/CTL SEC 2 FAULT", inhibited: 'above_80', type: 'amber' },
+            { text: "F/CTL PRIM 1 FAULT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "F/CTL L INR AIL FAULT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "F/CTL SEC 1 FAULT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "F/CTL SEC 2 FAULT", allowed: { min: 0, max: 80 }, type: 'amber' },
             // FUEL
-            { text: "FUEL PUMP 2 LO PRESS", inhibited: 'above_80', type: 'amber' },
+            { text: "FUEL PUMP 2 LO PRESS", allowed: { min: 0, max: 80 }, type: 'amber' },
             // FWS
             // HYD
-            { text: "HYD Y SYS LO PR", inhibited: 'above_80', type: 'amber' },
-            { text: "HYD B SYS LO PR", inhibited: 'above_80', type: 'amber' },
-            { text: "HYD G SYS LO PR", inhibited: 'above_80', type: 'amber' },
+            { text: "HYD Y SYS LO PR", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "HYD B SYS LO PR", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "HYD G SYS LO PR", allowed: { min: 0, max: 80 }, type: 'amber' },
             // L/G
             // MISC
             // NAV
             // SMOKE
-            { text: "SMOKE FWD CARGO", inhibited: 'nil', type: 'red' },
+            { text: "SMOKE FWD CRG SMOKE", allowed: { min: 0, max: 80 }, type: 'red' },
+            { text: "SMOKE AFT CRG SMOKE", allowed: { min: 0, max: 80 }, type: 'red' },
             // SURV
             // T.O
             // VENT
             // WHEEL
             // CREW OBSERVATIONS
-            { text: "EGT OVERLIMIT (NO ECAM)", inhibited: 'nil', type: 'crew' },
-            { text: "N1 OVERSPEED (NO ECAM)", inhibited: 'nil', type: 'crew' },
-            { text: "LOUD BANG", inhibited: 'nil', type: 'crew' },
-            { text: "negative speed trend", inhibited: 'nil', type: 'crew' },
-            { text: "10kt speed discrepancy", inhibited: 'nil', type: 'crew' },
-            { text: "30kt speed discrepancy", inhibited: 'nil', type: 'crew' },
+            { text: "EGT OVERLIMIT (NO ECAM)", allowed: { min: 80, max: 999 }, type: 'crew' },
+            { text: "N1 OVERSPEED (NO ECAM)", allowed: { min: 80, max: 999 }, type: 'crew' },
+            { text: "ENG 1 EGT AMBER X", allowed: null, type: 'crew' },
+            { text: "PF PFD BLANK", allowed: null, type: 'crew' },
+            { text: "PM PFD BLANK", allowed: null, type: 'crew' },
+            { text: "strong vibrations felt", allowed: null, type: 'crew' },
+            { text: "LOUD BANG", allowed: null, type: 'crew' },
+            { text: "negative speed trend", allowed: { min: 70, max: 125 }, type: 'crew' },
+            { text: "10kt speed discrepancy", allowed: { min: 90, max: 125 }, type: 'crew' },
+            { text: "20kt speed discrepancy", allowed: { min: 90, max: 125 }, type: 'crew' },
+            { text: "30kt speed discrepancy", allowed: { min: 90, max: 125 }, type: 'crew' },
+            { text: "50kt speed discrepancy", allowed: { min: 90, max: 125 }, type: 'crew' },
             // WINDSHEAR
-            { text: '"WINDSHEAR AHEAD"', inhibited: 'windshear', type: 'other' },
-            { text: '"MONITOR RADAR DISPLAY"', inhibited: 'windshear', type: 'other' },
+            { text: '"WINDSHEAR AHEAD"', allowed: { min: 0, max: 100 }, type: 'other' },
+            { text: '"MONITOR RADAR DISPLAY"', allowed: { min: 0, max: 100 }, type: 'other' },
             // OTHER
-            { text: 'ATC: "STOP STOP STOP"', inhibited: 'nil', type: 'other' },
-            { text: 'CABIN CALL TONE"', inhibited: 'nil', type: 'other' },
+            { text: 'ATC: "STOP STOP STOP"', allowed: null, type: 'other' },
+            { text: 'CABIN CALL TONE', allowed: null, type: 'other' },
 
             // -----------A350-----------
             // TO DO
@@ -749,14 +756,16 @@
 
         // ---------- Decision tree implementation ----------
         // This is the failure-event selection section that chooses a
-        // failure based on the current speed and each event's inhibit rule.
+        // failure based on the current speed and the event's allowed window.
+        function isEventAllowed(event, speed) {
+            if (!event.allowed) return true;
+            const min = Number.isFinite(event.allowed.min) ? event.allowed.min : 0;
+            const max = Number.isFinite(event.allowed.max) ? event.allowed.max : Infinity;
+            return speed >= min && speed <= max;
+        }
         function pickFailureEvent(speed) {
-            const candidates = failureEvents.filter(e => {
-                if (speed <= 80) return true;
-                if (speed <= 100) return e.inhibited !== 'above_80';
-                return e.inhibited !== 'above_80' && e.inhibited !== 'windshear';
-            });
-            return candidates.length ? pick(candidates) : pick(failureEvents);
+            const candidates = failureEvents.filter(e => isEventAllowed(e, speed));
+            return candidates.length ? pick(candidates) : null;
         }
 
         // ---------- Audio (synthesised tone chime) ----------
@@ -875,12 +884,12 @@
             presetV1 = presetVr = null;
             const failureSpeed = presetFailureSpeed !== null ? presetFailureSpeed : rnd(5, vr);
             const failureEvent = presetFailureSpeed !== null
-                ? { text: presetFailureAlert, type: presetFailureType, inhibited: presetFailureInhibited }
+                ? { text: presetFailureAlert, type: presetFailureType, allowed: presetFailureAllowed }
                 : pickFailureEvent(failureSpeed);
             presetFailureSpeed = null;
             presetFailureAlert = null;
             presetFailureType = null;
-            presetFailureInhibited = null;
+            presetFailureAllowed = null;
             const maxSpeed = vr + 20;
 
             const now = performance.now();
@@ -889,7 +898,7 @@
                 failureSpeed,
                 failureAlert: failureEvent.text,
                 failureType: failureEvent.type,
-                failureInhibited: failureEvent.inhibited,
+                failureAllowed: failureEvent.allowed,
                 speed: 0, phase: 'roll', failureTriggered: false, hundredCalled: false,
                 v1Called: false, rotatedCalled: false,
                 vrTime: null, vrTimer: null,
@@ -1068,7 +1077,7 @@
         let presetFailureSpeed = null;
         let presetFailureAlert = null;
         let presetFailureType = null;
-        let presetFailureInhibited = null;
+        let presetFailureAllowed = null;
 
         function generatePreset() {
             const v1 = rnd(135, 160);
@@ -1080,7 +1089,7 @@
             presetFailureSpeed = failureSpeed;
             presetFailureAlert = failureEvent.text;
             presetFailureType = failureEvent.type;
-            presetFailureInhibited = failureEvent.inhibited;
+            presetFailureAllowed = failureEvent.allowed;
             v1Value.textContent = String(v1);
             targetsEl.innerHTML = 'V1=<b class="v1">' + v1 + '</b> KT &nbsp; VR=<b class="vr">' + vr + '</b> KT &nbsp; (Split ' + split + ')';
             buildTape(vr + 20);
