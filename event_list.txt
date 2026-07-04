@@ -1,0 +1,54 @@
+# --------EVENT LIST--------
+# -----------A330-----------
+# A-ICE
+# AIR
+# APU
+# APU FIRE
+# AUTO FLT
+# BRAKES
+# CAB PR
+# COM
+# COND
+# CONFIG
+# DOOR
+# EIS
+# ELEC
+# ENG
+# F/CTL
+# FUEL
+# FWS
+# HYD
+# L/G
+# MISC
+# NAV
+# SMOKE
+# SURV
+# T.O
+# VENT
+# WHEEL
+# CREW OBSERVATIONS
+# WINDSHEAR
+
+
+# -----------A350-----------
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
