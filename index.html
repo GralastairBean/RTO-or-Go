@@ -483,12 +483,32 @@
             font-weight: bold;
         }
 
+        .res-row .val.info {
+            color: #fff;
+        }
+
+        .res-row .val.call {
+            color: #22d3ee;
+        }
+
+        .res-row .val.red {
+            color: #ff5555;
+        }
+
+        .res-row .val.amber {
+            color: #ffbb33;
+        }
+
         .res-row .val.good {
             color: #33dd66;
         }
 
         .res-row .val.bad {
             color: #ff5555;
+        }
+
+        .res-row .val.crew {
+            color: #aaa;
         }
 
         .res-row .val.warn {
@@ -883,10 +903,22 @@
             idxBox.textContent = Math.round(speed);
         }
 
+        function getEventClass(type) {
+            const normalized = (type || 'info').toLowerCase();
+            if (normalized === 'crew') return 'crew';
+            if (normalized === 'call') return 'call';
+            if (normalized === 'red') return 'red';
+            if (normalized === 'amber') return 'amber';
+            if (normalized === 'good') return 'good';
+            if (normalized === 'bad') return 'bad';
+            return 'info';
+        }
+
         // ---------- Event log ----------
         function logEvent(msg, type) {
             const line = document.createElement('div');
-            line.className = 'log-line ' + (type || 'info');
+            const eventClass = getEventClass(type);
+            line.className = 'log-line ' + eventClass;
             if (type === 'crew') {
                 line.innerHTML = '<span class="m">CREW OBSERVATION</span><span class="m">' + msg + '</span>';
             } else {
@@ -1068,7 +1100,9 @@
         }
         function showSummary() {
             document.getElementById('rTargets').textContent = 'V1=' + state.v1 + ' / VR=' + state.vr + ' KT';
-            document.getElementById('rFailure').textContent = state.failureTriggered ? state.alert : 'No event';
+            const rFailure = document.getElementById('rFailure');
+            rFailure.textContent = state.failureTriggered ? state.alert : 'No event';
+            rFailure.className = 'val ' + getEventClass(state.failureTriggered ? state.failureType : 'info');
             document.getElementById('rEcamSpd').textContent = state.failureTriggered ? (state.speedAtFailure + ' KT') : 'N/A';
             document.getElementById('rDecSpd').textContent = (state.speedAtDecision === null) ? 'No decision' : (state.autoRotated ? 'N/A (auto-rotate)' : (state.speedAtDecision + ' KT'));
             let react = 'N/A';
