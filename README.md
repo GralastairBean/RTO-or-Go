@@ -30,5 +30,6 @@ split (vr-v1) is calculated for display only
 ## Supported Types
 - Current implementation is 330 only
 - Step 2 will be to add 350 which will be very similar.
+- Need to seperate type specific from generic
 - Later we can look at adding other types.
 
