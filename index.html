@@ -38,11 +38,13 @@
         }
 
         .stage {
+            width: min(100%, 470px);
             display: flex;
             gap: 10px;
             align-items: flex-start;
             flex-wrap: nowrap;
             justify-content: center;
+            padding: 0 6px;
         }
 
         /* ===== Speed tape ===== */
@@ -256,7 +258,9 @@
 
         /* ===== Event log ===== */
         .log-wrap {
-            width: 380px;
+            flex: 1 1 0;
+            min-width: 0;
+            max-width: 380px;
             min-height: 460px;
             display: flex;
             flex-direction: column;
@@ -341,11 +345,12 @@
         /* ===== Controls ===== */
         .controls {
             margin-top: 18px;
-            width: min(100%, 360px);
+            width: min(100%, 470px);
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 12px;
+            padding: 0 6px;
         }
 
         .targets {
