@@ -1,0 +1,1158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Takeoff Decision Simulator</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Consolas', 'Monaco', monospace;
+            background: #0a0e14;
+            color: #d0d8e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 16px;
+        }
+
+        h1 {
+            font-size: 1.05rem;
+            letter-spacing: 2px;
+            color: #6cf;
+            text-align: center;
+        }
+
+        .subtitle {
+            font-size: .72rem;
+            color: #889;
+            margin: 4px 0 16px;
+            text-align: center;
+        }
+
+        .stage {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            flex-wrap: nowrap;
+            justify-content: center;
+        }
+
+        /* ===== Speed tape ===== */
+        .tape-wrap {
+            position: relative;
+            width: 80px;
+            height: 420px;
+            background: linear-gradient(90deg, #3c4149, #565c64 55%, #3c4149);
+            border: 2px solid #1a1f26;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .center-line {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateX(-50%);
+            z-index: 5;
+        }
+
+        .current-speed-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            height: 2px;
+            background: #ffde59;
+            transform: translateY(-50%);
+            z-index: 15;
+        }
+
+        .speed-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translateX(0) translateY(-50%);
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        .speed-arrow {
+            width: 0;
+            height: 0;
+            border-top: 14px solid transparent;
+            border-bottom: 14px solid transparent;
+            border-right: 24px solid #ffde59;
+        }
+
+        .tape-inner {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            will-change: transform;
+        }
+
+        .tick {
+            position: absolute;
+            left: calc(50% + 2px);
+            height: 0;
+            border-top: 2px solid #e8e8e8;
+        }
+
+        .tick.major,
+        .tick.minor {
+            width: 12px;
+        }
+
+        .tick-lbl {
+            position: absolute;
+            left: 2px;
+            width: 32px;
+            color: #fff;
+            font-size: 1rem;
+            font-weight: bold;
+            transform: translateY(-50%);
+            text-align: right;
+        }
+
+        /* barber pole (min speed) */
+        .barber {
+            display: none;
+        }
+
+        /* speed bugs */
+        .bug {
+            position: absolute;
+            height: 0;
+        }
+
+        .bug.v1 {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+        }
+
+        .bug.v1 .ln {
+            border-color: #22d3ee;
+            width: 100%;
+        }
+
+        .bug.v1 .tx {
+            left: 100%;
+            margin-left: 4px;
+            top: -10px;
+            color: #22d3ee;
+            font-size: .9rem;
+            white-space: nowrap;
+        }
+
+        .bug.vr {
+            left: 50%;
+            top: auto;
+            right: auto;
+            transform: translateX(-50%);
+            width: auto;
+        }
+
+        .tape-labels {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 6px;
+            pointer-events: none;
+        }
+
+        .tape-value {
+            display: inline-block;
+            color: #22d3ee;
+            font-size: 1.25rem;
+            font-weight: bold;
+            padding: 0 4px;
+            border: none;
+            background: transparent;
+        }
+
+        #capTop {
+            display: none;
+        }
+
+        .bug .ln {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            border-top: 3px solid;
+        }
+
+        .bug .tx {
+            position: absolute;
+            right: 4px;
+            top: -10px;
+            font-weight: bold;
+            font-size: .95rem;
+            color: #22d3ee;
+            white-space: nowrap;
+        }
+
+        .bug.v1 .ln {
+            border-color: #22d3ee;
+        }
+
+        .bug.v1 .tx {
+            right: 4px;
+            top: -12px;
+            font-size: 1rem;
+        }
+
+        .bug.vr {
+            width: 14px;
+            height: 14px;
+        }
+
+        .bug.vr .circle {
+            position: absolute;
+            left: 50%;
+            top: -7px;
+            transform: translateX(-50%);
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 2px solid #22d3ee;
+            background: transparent;
+        }
+
+        /* center index */
+        .idx {
+            position: absolute;
+            left: 0;
+            top: 50%;
+            width: 100%;
+            transform: translateY(-50%);
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .idx-box {
+            display: none;
+        }
+
+        .tape-cap {
+            width: 100%;
+            text-align: center;
+            color: #fff;
+            font-size: .8rem;
+            font-weight: bold;
+            padding: 2px 0;
+        }
+
+        /* ===== Event log ===== */
+        .log-wrap {
+            width: 380px;
+            min-height: 460px;
+            display: flex;
+            flex-direction: column;
+            background: #0d1117;
+            border: 2px solid #1a2530;
+            border-radius: 6px;
+        }
+
+        .log-head {
+            background: #11161d;
+            border-bottom: 1px solid #1a2530;
+            padding: 8px 12px;
+            font-size: .85rem;
+            letter-spacing: 2px;
+            color: #6cf;
+        }
+
+        .log {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+
+        .log-line {
+            padding: 6px 14px;
+            font-size: 1rem;
+            border-bottom: 1px solid #11161d;
+            animation: fade .2s ease;
+        }
+
+        @keyframes fade {
+            from {
+                opacity: 0;
+                transform: translateX(8px);
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        .log-line .m {
+            font-weight: bold;
+        }
+
+        .log-line.crew {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            color: #aaa;
+        }
+
+        .log-line.crew .m {
+            color: #aaa;
+            font-weight: bold;
+        }
+
+        .log-line.info .m {
+            color: #fff;
+        }
+
+        .log-line.call .m {
+            color: #22d3ee;
+        }
+
+        .log-line.red .m {
+            color: #ff5555;
+        }
+
+        .log-line.amber .m {
+            color: #ffbb33;
+        }
+
+        .log-line.good .m {
+            color: #33dd66;
+        }
+
+        .log-line.bad .m {
+            color: #ff5555;
+        }
+
+        /* ===== Controls ===== */
+        .controls {
+            margin-top: 18px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .targets {
+            font-size: .95rem;
+            color: #ccd;
+            letter-spacing: 1px;
+        }
+
+        .targets b.v1 {
+            color: #22d3ee;
+        }
+
+        .targets b.vr {
+            color: #16e016;
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 16px;
+        }
+
+        button {
+            font-family: inherit;
+            font-size: 1.25rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            padding: 13px 36px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: transform .08s;
+        }
+
+        button:active {
+            transform: scale(.95);
+        }
+
+        button:disabled {
+            opacity: .35;
+            cursor: not-allowed;
+        }
+
+        .stop-btn {
+            background: #cc1111;
+            color: #fff;
+        }
+
+        .go-btn {
+            background: #11aa44;
+            color: #fff;
+        }
+
+        .start-btn {
+            background: #2266cc;
+            color: #fff;
+            font-size: 1.05rem;
+            padding: 11px 28px;
+        }
+
+        .hint {
+            font-size: .72rem;
+            color: #667;
+        }
+
+        /* vacate + results */
+        .vacate-panel,
+        .results {
+            margin-top: 14px;
+            width: 558px;
+            max-width: 100%;
+            background: #131820;
+            border: 1px solid #2a3340;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            display: none;
+        }
+
+        .vacate-panel p {
+            font-size: 1.1rem;
+            margin-bottom: 16px;
+            letter-spacing: 1px;
+        }
+
+        .vacate-panel button {
+            font-size: 1.05rem;
+            padding: 10px 28px;
+            margin: 0 8px;
+        }
+
+        .vacate-panel .yes {
+            background: #11aa44;
+            color: #fff;
+        }
+
+        .vacate-panel .no {
+            background: #cc1111;
+            color: #fff;
+        }
+
+        .results h2 {
+            font-size: 1rem;
+            color: #6cf;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #2a3340;
+            padding-bottom: 8px;
+            text-align: left;
+        }
+
+        .res-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            font-size: .95rem;
+        }
+
+        .res-row .label {
+            color: #889;
+        }
+
+        .res-row .val {
+            font-weight: bold;
+        }
+
+        .res-row .val.good {
+            color: #33dd66;
+        }
+
+        .res-row .val.bad {
+            color: #ff5555;
+        }
+
+        .res-row .val.warn {
+            color: #ffbb33;
+        }
+
+        @media (max-width: 720px) {
+            body {
+                padding: 6px;
+            }
+
+            h1 {
+                font-size: .9rem;
+            }
+
+            .subtitle {
+                font-size: .65rem;
+                margin-bottom: 8px;
+            }
+
+            .stage {
+                gap: 8px;
+                align-items: flex-start;
+                justify-content: center;
+            }
+
+            .tape-wrap {
+                width: 65px;
+                height: 260px;
+            }
+
+            .tape-value {
+                font-size: .85rem;
+            }
+
+            .tick-lbl {
+                left: 6px;
+                width: auto;
+                font-size: .8rem;
+                text-align: left;
+            }
+
+            .bug.v1 .tx {
+                font-size: .75rem;
+                right: 2px;
+            }
+
+            .bug.vr .circle {
+                width: 10px;
+                height: 10px;
+                border-width: 2px;
+            }
+
+            .speed-arrow {
+                border-top: 7px solid transparent;
+                border-bottom: 7px solid transparent;
+                border-right: 14px solid #ffde59;
+            }
+
+            .log-wrap {
+                width: 260px;
+                min-height: 300px;
+            }
+
+            .log-line {
+                font-size: .85rem;
+                padding: 5px 10px;
+                white-space: nowrap;
+            }
+
+            .controls {
+                width: 100%;
+                gap: 6px;
+            }
+
+            .btn-row {
+                flex-direction: column;
+                width: 100%;
+                gap: 8px;
+            }
+
+            .btn-row button,
+            .start-btn {
+                width: 100%;
+            }
+
+            button {
+                font-size: .95rem;
+                padding: 8px 14px;
+            }
+
+            .targets {
+                font-size: .82rem;
+            }
+
+            .hint {
+                font-size: .62rem;
+            }
+
+            .vacate-panel,
+            .results {
+                width: 100%;
+                padding: 12px;
+            }
+        }
+
+        @media (max-width: 600px),
+        (max-height: 700px) {
+            .tape-wrap {
+                width: 60px;
+                height: 220px;
+            }
+
+            .log-wrap {
+                width: 220px;
+                min-height: 260px;
+            }
+
+            .log-line {
+                font-size: .8rem;
+                padding: 4px 8px;
+                white-space: nowrap;
+            }
+
+            .start-btn {
+                padding: 8px 12px;
+            }
+
+            .targets {
+                font-size: .8rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>RTO or GO?</h1>
+    <div class="subtitle">Takeoff Decision Simulator (Airbus)</div>
+
+    <div class="stage">
+        <div>
+            <div class="tape-cap" id="capTop">—</div>
+            <div class="tape-labels">
+                <div class="tape-value" id="v1Value">—</div>
+            </div>
+            <div class="tape-wrap">
+                <div class="center-line"></div>
+                <div class="tape-inner" id="tapeInner"></div>
+                <div class="current-speed-line"></div>
+                <div class="speed-indicator">
+                    <div class="speed-arrow"></div>
+                </div>
+                <div class="idx">
+                    <div class="idx-box" id="idxBox">0</div>
+                </div>
+            </div>
+            <div class="tape-cap" id="capBot">—</div>
+        </div>
+
+        <div class="log-wrap">
+            <div class="log-head">EVENT LOG</div>
+            <div class="log" id="log"></div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="targets" id="targets">Press START to begin</div>
+        <div class="btn-row">
+            <button class="stop-btn" id="stopBtn" disabled>STOP</button>
+            <button class="go-btn" id="goBtn" disabled>GO</button>
+        </div>
+        <button class="start-btn" id="startBtn">START TAKEOFF</button>
+        <div class="hint">Keyboard: [S] = STOP &nbsp;&nbsp; [G] = GO</div>
+    </div>
+
+    <div class="vacate-panel" id="vacatePanel">
+        <p>Do you want to vacate the runway?</p>
+        <button class="yes" id="vacYes">YES</button>
+        <button class="no" id="vacNo">NO</button>
+    </div>
+
+    <div class="results" id="results">
+        <h2>TAKEOFF SUMMARY</h2>
+        <div class="res-row"><span class="label">V SPEEDS</span><span class="val" id="rTargets"></span></div>
+        <div class="res-row"><span class="label">EVENT</span><span class="val" id="rFailure"></span></div>
+        <div class="res-row"><span class="label">SPEED AT EVENT</span><span class="val" id="rEcamSpd"></span></div>
+        <div class="res-row"><span class="label">SPEED AT DECISION</span><span class="val" id="rDecSpd"></span></div>
+        <div class="res-row"><span class="label">REACTION TIME</span><span class="val" id="rReact"></span></div>
+        <div class="res-row"><span class="label">RUNWAY VACATED</span><span class="val" id="rVacated"></span></div>
+        <div class="res-row"><span class="label">RESULT</span><span class="val" id="rResult"></span></div>
+    </div>
+
+    <script>
+        // ---------- EVENT DATA ----------
+        // Allowed-speed logic:
+        //  - allowed: null = always available at any speed
+        //  - allowed: { min: 0, max: 80 } = available 0 to 80 kts
+        //  - allowed: { min: 65, max: 999 } = available above 65 kts
+        const failureEvents = [
+            // --------EVENT LIST--------
+            // -----------A330-----------
+            // A-ICE
+            // AIR
+            { text: "AIR PACK 1 FAULT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            // APU
+            // APU FIRE
+            // AUTO FLT
+            // BRAKES
+            { text: "BRAKES HOT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            // CAB PR
+            // COM
+            // COND
+            // CONFIG
+            // DOOR
+            // EIS
+            // ELEC
+            // ENG
+            { text: "ENG 1 FIRE", allowed: null, type: 'red' },
+            { text: "ENG 2 FIRE", allowed: null, type: 'red' },
+            { text: "ENG 1 FAIL", allowed: null, type: 'amber' },
+            { text: "ENG 2 FAIL", allowed: null, type: 'amber' },
+            { text: "ENG 1 OIL PR LO", allowed: null, type: 'amber' },
+            { text: "ENG 2 OIL PR LO", allowed: null, type: 'amber' },
+            { text: "ENG 1 EGT OVERLIMIT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "ENG 2 EPR MODE FAULT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "ENG 1 N1 OVERLIMIT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "ENG 2 OIL HI TEMP", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "ENG 1 REV UNLOCKED", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "ENG 2 STALL", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "ENG THRUST LOSS", allowed: { min: 0, max: 80 }, type: 'amber' },
+            // F/CTL
+            { text: "F/CTL PRIM 1 FAULT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "F/CTL L INR AIL FAULT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "F/CTL SEC 1 FAULT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "F/CTL SEC 2 FAULT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            // FUEL
+            { text: "FUEL PUMP 2 LO PRESS", allowed: { min: 0, max: 80 }, type: 'amber' },
+            // FWS
+            // HYD
+            { text: "HYD Y SYS LO PR", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "HYD B SYS LO PR", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "HYD G SYS LO PR", allowed: { min: 0, max: 80 }, type: 'amber' },
+            // L/G
+            // MISC
+            // NAV
+            // SMOKE
+            { text: "SMOKE FWD CRG SMOKE", allowed: { min: 0, max: 80 }, type: 'red' },
+            { text: "SMOKE AFT CRG SMOKE", allowed: { min: 0, max: 80 }, type: 'red' },
+            // SURV
+            // T.O
+            // VENT
+            // WHEEL
+            // CREW OBSERVATIONS
+            { text: "EGT OVERLIMIT (NO ECAM)", allowed: { min: 80, max: 999 }, type: 'crew' },
+            { text: "N1 OVERSPEED (NO ECAM)", allowed: { min: 80, max: 999 }, type: 'crew' },
+            { text: "ENG 1 EGT AMBER X", allowed: null, type: 'crew' },
+            { text: "PF PFD BLANK", allowed: null, type: 'crew' },
+            { text: "PM PFD BLANK", allowed: null, type: 'crew' },
+            { text: "strong vibrations felt", allowed: null, type: 'crew' },
+            { text: "LOUD BANG", allowed: null, type: 'crew' },
+            { text: "negative speed trend", allowed: { min: 70, max: 125 }, type: 'crew' },
+            { text: "10kt speed discrepancy", allowed: { min: 101, max: 125 }, type: 'crew' },
+            { text: "20kt speed discrepancy", allowed: { min: 101, max: 125 }, type: 'crew' },
+            { text: "30kt speed discrepancy", allowed: { min: 101, max: 125 }, type: 'crew' },
+            { text: "50kt speed discrepancy", allowed: { min: 101, max: 125 }, type: 'crew' },
+            // WINDSHEAR
+            { text: '"WINDSHEAR AHEAD"', allowed: { min: 0, max: 100 }, type: 'other' },
+            { text: '"MONITOR RADAR DISPLAY"', allowed: { min: 0, max: 100 }, type: 'other' },
+            // OTHER
+            { text: 'ATC: "STOP STOP STOP"', allowed: null, type: 'other' },
+            { text: 'CABIN CALL TONE', allowed: null, type: 'other' },
+
+            // -----------A350-----------
+            // TO DO
+        ];
+        const rnd = (lo, hi) => Math.floor(Math.random() * (hi - lo + 1)) + lo;
+        const pick = a => a[Math.floor(Math.random() * a.length)];
+
+        // ---------- Decision tree implementation ----------
+        // This is the failure-event selection section that chooses a
+        // failure based on the current speed and the event's allowed window.
+        function pickFailureEvent(upperBound) {
+            const event = pick(failureEvents);
+            if (!event) return null;
+
+            const globalMin = 5;
+            const globalMax = Number.isFinite(upperBound) ? Math.max(globalMin, upperBound - 5) : 165;
+            const eventMin = Number.isFinite(event.allowed && event.allowed.min) ? event.allowed.min : globalMin;
+            const eventMax = Number.isFinite(event.allowed && event.allowed.max) ? event.allowed.max : globalMax;
+            const low = Math.max(globalMin, eventMin);
+            const high = Math.min(globalMax, eventMax);
+
+            if (!Number.isFinite(low) || !Number.isFinite(high) || low > high) {
+                const fallback = Math.max(globalMin, Math.min(globalMax, globalMin));
+                return {
+                    event,
+                    failureSpeed: fallback
+                };
+            }
+
+            return {
+                event,
+                failureSpeed: rnd(low, high)
+            };
+        }
+
+        // ---------- Audio (synthesised tone chime) ----------
+        let audioCtx = null;
+        function playChord() {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const t = audioCtx.currentTime;
+                const master = audioCtx.createGain();
+                const frequency = 1000;
+                const duration = 1.1;
+                master.gain.setValueAtTime(0.0001, t);
+                master.gain.exponentialRampToValueAtTime(0.35, t + 0.015);
+                master.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+                master.connect(audioCtx.destination);
+                const o = audioCtx.createOscillator();
+                o.type = 'sine';
+                o.frequency.setValueAtTime(frequency, t);
+                o.connect(master);
+                o.start(t);
+                o.stop(t + duration);
+            } catch (e) { }
+        }
+        function playChime(count) {
+            if (!count || count <= 0) return;
+            for (let i = 0; i < count; i++) {
+                setTimeout(playChord, i * 300);
+            }
+        }
+
+        // ---------- DOM ----------
+        const tapeInner = document.getElementById('tapeInner');
+        const tapeWrap = document.querySelector('.tape-wrap');
+        const idxBox = document.getElementById('idxBox');
+        const v1Value = document.getElementById('v1Value');
+        const logEl = document.getElementById('log');
+        const targetsEl = document.getElementById('targets');
+        const stopBtn = document.getElementById('stopBtn');
+        const goBtn = document.getElementById('goBtn');
+        const startBtn = document.getElementById('startBtn');
+        const resultsEl = document.getElementById('results');
+        const vacatePanel = document.getElementById('vacatePanel');
+        const capTop = document.getElementById('capTop');
+        const capBot = document.getElementById('capBot');
+
+        // ---------- Speed tape ----------
+        const PX_PER_KT = 5;
+        function tapeHeight() {
+            return tapeWrap ? tapeWrap.clientHeight : 480;
+        }
+        function buildTape(maxSpeed) {
+            tapeInner.innerHTML = '';
+            const top = maxSpeed + 40;
+            for (let s = 0; s <= top; s += 10) {
+                const t = document.createElement('div');
+                t.className = 'tick ' + (s % 20 === 0 ? 'major' : 'minor');
+                t.style.top = (s * PX_PER_KT) + 'px';
+                tapeInner.appendChild(t);
+                if (s % 20 === 0) {
+                    const l = document.createElement('div'); l.className = 'tick-lbl';
+                    l.style.top = (s * PX_PER_KT) + 'px'; l.textContent = s;
+                    tapeInner.appendChild(l);
+                }
+            }
+            // ensure tape is aligned correctly when first rendered
+            updateTape(0);
+        }
+        function addBarber(fromKt, toKt) {
+            const b = document.createElement('div'); b.className = 'barber';
+            b.style.top = (fromKt * PX_PER_KT) + 'px';
+            b.style.height = ((toKt - fromKt) * PX_PER_KT) + 'px';
+            tapeInner.appendChild(b);
+        }
+        function addBug(speed, cls, label) {
+            const b = document.createElement('div'); b.className = 'bug ' + cls;
+            b.style.top = (speed * PX_PER_KT) + 'px';
+            if (cls === 'vr') {
+                b.innerHTML = '<div class="circle"></div>';
+            } else {
+                b.innerHTML = '<div class="ln"></div><div class="tx">' + label + '</div>';
+            }
+            tapeInner.appendChild(b);
+        }
+        function updateTape(speed) {
+            const h = tapeHeight();
+            tapeInner.style.transform = 'translateY(' + (h / 2 - speed * PX_PER_KT) + 'px)';
+            idxBox.textContent = Math.round(speed);
+        }
+
+        // ---------- Event log ----------
+        function logEvent(msg, type) {
+            const line = document.createElement('div');
+            line.className = 'log-line ' + (type || 'info');
+            if (type === 'crew') {
+                line.innerHTML = '<span class="m">CREW OBSERVATION</span><span class="m">' + msg + '</span>';
+            } else {
+                line.innerHTML = '<span class="m">' + msg + '</span>';
+            }
+            logEl.appendChild(line);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        // ---------- Simulation ----------
+        let state = null;
+        function newGame() {
+            // resume audio on user gesture (START button)
+            if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { } }
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+
+            // Use the preset V speeds generated during load/reset
+            const v1 = presetV1;
+            const vr = presetVr;
+            const split = vr - v1;
+            // consume preset so subsequent runs don't reuse it unless reset called
+            presetV1 = presetVr = null;
+            const failureSelection = presetFailureSpeed !== null
+                ? { event: { text: presetFailureAlert, type: presetFailureType, allowed: presetFailureAllowed }, failureSpeed: presetFailureSpeed }
+                : pickFailureEvent(vr);
+            presetFailureSpeed = null;
+            presetFailureAlert = null;
+            presetFailureType = null;
+            presetFailureAllowed = null;
+            const maxSpeed = vr + 20;
+            const failureEvent = failureSelection ? failureSelection.event : null;
+            const failureSpeed = failureSelection ? failureSelection.failureSpeed : null;
+
+            const now = performance.now();
+            state = {
+                v1, split, vr, maxSpeed,
+                failureSpeed,
+                failureAlert: failureEvent ? failureEvent.text : 'No event',
+                failureType: failureEvent ? failureEvent.type : 'info',
+                failureAllowed: failureEvent ? failureEvent.allowed : null,
+                speed: 0, phase: 'roll', failureTriggered: false, hundredCalled: false,
+                v1Called: false, rotatedCalled: false,
+                vrTime: null, vrTimer: null,
+                speedAtFailure: null, timeOfFailure: null, choice: null, speedAtDecision: null, timeOfDecision: null,
+                autoRotated: false, vacated: 'N/A', startT: now, lastT: now
+            };
+
+            buildTape(maxSpeed);
+            addBug(v1, 'v1', '1');
+            addBug(vr, 'vr', 'R');
+            v1Value.textContent = v1;
+
+            capTop.textContent = '';
+            capBot.textContent = '';
+
+            logEl.innerHTML = '';
+            resultsEl.style.display = 'none'; vacatePanel.style.display = 'none';
+            targetsEl.innerHTML = 'V1=<b class="v1">' + v1 + '</b> KT &nbsp; VR=<b class="vr">' + vr + '</b> KT &nbsp; (Split ' + split + ')';
+            stopBtn.disabled = false; goBtn.disabled = false; startBtn.disabled = true;
+            updateTape(0);
+            requestAnimationFrame(loop);
+        }
+        function accelAt(s) {
+            let thrust = (s < 30) ? 1.25 * (0.4 + (s / 30) * 0.6) : 1.25;
+            return thrust - 0.000025 * s * s;
+        }
+
+        // centralised event checks so they run in roll and go phases
+        function checkEvents(now) {
+            if (!state) return;
+            if (state.speed >= 100 && !state.hundredCalled) {
+                state.hundredCalled = true; logEvent('"100 KTS"', 'call');
+            }
+            if (state.speed >= state.v1 && !state.v1Called) {
+                state.v1Called = true; logEvent('"V1"', 'call');
+            }
+            if (state.speed >= state.failureSpeed && !state.failureTriggered) {
+                state.failureTriggered = true; state.speedAtFailure = Math.round(state.speed);
+                state.timeOfFailure = now;
+                state.alert = state.failureAlert;
+                if (state.failureType === 'red') {
+                    playChime(5);
+                    logEvent(state.alert, 'red');
+                } else if (state.failureType === 'amber') {
+                    playChime(1);
+                    logEvent(state.alert, 'amber');
+                } else if (state.failureType === 'crew') {
+                    logEvent(state.alert, 'crew');
+                } else {
+                    state.failureType = 'other';
+                    logEvent(state.alert, 'info');
+                }
+            }
+            if (!state.rotatedCalled && state.choice === 'g' && state.speed >= state.vr && state.speed < state.vr + 30) {
+                state.rotatedCalled = true;
+                logEvent('"ROTATE"', 'call');
+                state.vrTime = now;
+            }
+            if (!state.rotatedCalled && state.speed >= state.vr + 20) {
+                state.phase = 'go';
+                finishOverrun();
+            }
+        }
+        function loop(now) {
+            if (!state || state.phase === 'ended') return;
+            const dt = Math.min((now - state.lastT) / 1000, 0.05); state.lastT = now;
+
+            if (state.phase === 'roll') {
+                state.speed += accelAt(state.speed) * 10 * dt;
+                checkEvents(now);
+                updateTape(state.speed); requestAnimationFrame(loop);
+            }
+            else if (state.phase === 'stop') {
+                state.speed -= (5 + Math.random() * 3) * 10 * dt;
+                if (state.speed <= 0) { state.speed = 0; updateTape(0); finish(); return; }
+                updateTape(state.speed); requestAnimationFrame(loop);
+            }
+            else if (state.phase === 'go') {
+                state.speed += (1.25 - 0.000025 * state.speed * state.speed) * 10 * dt;
+                checkEvents(now);
+                if (state.speed >= state.vr + 15) { finish(); return; }
+                updateTape(state.speed); requestAnimationFrame(loop);
+            }
+        }
+        function makeDecision(ch) {
+            if (!state || state.phase === 'ended' || state.choice !== null) return;
+            state.choice = ch; state.speedAtDecision = Math.round(state.speed);
+            state.timeOfDecision = performance.now();
+            if (ch === 's') { logEvent('"STOP"', 'red'); }
+            else { logEvent('"GO"', 'good'); }
+            state.phase = (ch === 's') ? 'stop' : 'go';
+            if (ch === 'g' && !state.rotatedCalled && state.speed >= state.vr && state.speed < state.vr + 20) {
+                state.rotatedCalled = true;
+                logEvent('"ROTATE"', 'call');
+                state.vrTime = performance.now();
+            }
+            stopBtn.disabled = true; goBtn.disabled = true;
+        }
+        function finishOverrun() {
+            if (!state || state.phase === 'ended') return;
+            stopBtn.disabled = true; goBtn.disabled = true;
+            try { if (state && state.vrTimer) { clearTimeout(state.vrTimer); state.vrTimer = null; } } catch (e) { }
+            state.phase = 'ended';
+            state.resultText = 'OVERRUN (NO ROTATE)';
+            state.ok = false;
+            state.resultClass = 'bad';
+            state.vacated = 'N/A';
+            showSummary();
+        }
+        function finish() {
+            if (!state || state.phase === 'ended') return;
+            stopBtn.disabled = true; goBtn.disabled = true;
+            // clear any pending VR timer
+            try { if (state && state.vrTimer) { clearTimeout(state.vrTimer); state.vrTimer = null; } } catch (e) { }
+            let resultText, ok, successfulRTO = false;
+            if (state.choice === 's') {
+                if (state.speedAtDecision > state.v1) {
+                    resultText = 'RTO > V1';
+                    ok = false;
+                } else {
+                    resultText = 'RTO';
+                    ok = true;
+                    successfulRTO = true;
+                }
+            } else {
+                if (state.choice === 'g' && state.speedAtDecision !== null && state.speedAtDecision > state.vr + 5) {
+                    resultText = 'TAKEOFF (LATE ROTATION)';
+                    ok = false;
+                } else {
+                    resultText = 'TAKEOFF';
+                    ok = true;
+                }
+            }
+            state.phase = 'ended';
+            state.resultText = resultText; state.ok = ok;
+
+            if (successfulRTO) { vacatePanel.style.display = 'block'; vacatePanel.scrollIntoView({ behavior: 'smooth' }); }
+            else { state.vacated = 'N/A'; showSummary(); }
+        }
+        function showSummary() {
+            document.getElementById('rTargets').textContent = 'V1=' + state.v1 + ' / VR=' + state.vr + ' KT';
+            document.getElementById('rFailure').textContent = state.failureTriggered ? state.alert : 'No event';
+            document.getElementById('rEcamSpd').textContent = state.failureTriggered ? (state.speedAtFailure + ' KT') : 'N/A';
+            document.getElementById('rDecSpd').textContent = (state.speedAtDecision === null) ? 'No decision' : (state.autoRotated ? 'N/A (auto-rotate)' : (state.speedAtDecision + ' KT'));
+            let react = 'N/A';
+            if (state.failureTriggered && state.timeOfDecision !== null)
+                react = ((state.timeOfDecision - state.timeOfFailure) / 1000).toFixed(2) + ' s';
+            document.getElementById('rReact').textContent = react;
+            document.getElementById('rVacated').textContent = state.vacated;
+            const rRes = document.getElementById('rResult');
+            rRes.textContent = state.resultText;
+            if (state.resultText === 'TAKEOFF (LATE ROTATION)') {
+                rRes.className = 'val warn';
+            } else if (state.resultText === 'RTO > V1' || state.resultText === 'OVERRUN (NO ROTATE)') {
+                rRes.className = 'val bad';
+            } else {
+                rRes.className = 'val good';
+            }
+            resultsEl.style.display = 'block'; resultsEl.scrollIntoView({ behavior: 'smooth' });
+            setStartMode('reset');
+            startBtn.disabled = false;
+        }
+
+        // ---------- Events ----------
+        stopBtn.addEventListener('click', () => makeDecision('s'));
+        goBtn.addEventListener('click', () => makeDecision('g'));
+        // use a single handler that toggles between start and reset modes
+        startBtn.addEventListener('click', startBtnHandler);
+        document.getElementById('vacYes').addEventListener('click', () => { state.vacated = 'YES'; vacatePanel.style.display = 'none'; showSummary(); });
+        document.getElementById('vacNo').addEventListener('click', () => { state.vacated = 'NO'; vacatePanel.style.display = 'none'; showSummary(); });
+        document.addEventListener('keydown', e => { if (e.key.toLowerCase() === 's') makeDecision('s'); if (e.key.toLowerCase() === 'g') makeDecision('g'); });
+
+        // Generate v-speeds for initial display and for use during the simulation
+        let presetV1 = null;
+        let presetVr = null;
+        let presetFailureSpeed = null;
+        let presetFailureAlert = null;
+        let presetFailureType = null;
+        let presetFailureAllowed = null;
+
+        function generatePreset() {
+            const v1 = rnd(135, 160);
+            const vr = rnd(v1 + 5, 170);
+            const split = vr - v1;
+            presetV1 = v1; presetVr = vr;
+            const failureSelection = pickFailureEvent(vr);
+            const failureSpeed = failureSelection ? failureSelection.failureSpeed : null;
+            const failureEvent = failureSelection ? failureSelection.event : null;
+            presetFailureSpeed = failureSpeed;
+            presetFailureAlert = failureEvent ? failureEvent.text : null;
+            presetFailureType = failureEvent ? failureEvent.type : null;
+            presetFailureAllowed = failureEvent ? failureEvent.allowed : null;
+            v1Value.textContent = String(v1);
+            targetsEl.innerHTML = 'V1=<b class="v1">' + v1 + '</b> KT &nbsp; VR=<b class="vr">' + vr + '</b> KT &nbsp; (Split ' + split + ')';
+            buildTape(vr + 20);
+            updateTape(0);
+            console.log('[RTO/GO] Upcoming failure selected:', presetFailureAlert, '| Trigger speed:', presetFailureSpeed, 'KT');
+        }
+
+        function setStartMode(mode) {
+            // mode: 'start' | 'reset'
+            if (mode === 'start') {
+                startBtn.textContent = 'START TAKEOFF';
+                startBtn.dataset.mode = 'start';
+            } else if (mode === 'reset') {
+                startBtn.textContent = 'RESET';
+                startBtn.dataset.mode = 'reset';
+            }
+        }
+
+        function startBtnHandler() {
+            const mode = startBtn.dataset.mode || 'start';
+            if (mode === 'start') return newGame();
+            if (mode === 'reset') return resetUI();
+        }
+
+        function resetUI() {
+            // hide results and vacate panel, clear log, restore initial V speeds
+            resultsEl.style.display = 'none';
+            vacatePanel.style.display = 'none';
+            logEl.innerHTML = '';
+            // clear any pending VR timer
+            try { if (state && state.vrTimer) { clearTimeout(state.vrTimer); state.vrTimer = null; } } catch (e) { }
+            state = null;
+            // regenerate and display new preset V speeds
+            generatePreset();
+            stopBtn.disabled = true; goBtn.disabled = true;
+            setStartMode('start');
+            startBtn.disabled = false;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // init: generate and display the first preset V speeds
+        capTop.textContent = '';
+        capBot.textContent = '';
+        generatePreset();
+        setStartMode('start');
+        window.scrollTo({ top: 0, behavior: 'auto' });
+    </script>
+</body>
+
+</html>
