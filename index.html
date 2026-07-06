@@ -787,11 +787,31 @@
         const rnd = (lo, hi) => Math.floor(Math.random() * (hi - lo + 1)) + lo;
         const pick = a => a[Math.floor(Math.random() * a.length)];
 
+        function getFailureEventWeight(event) {
+            return (event && event.allowed && event.allowed.min === 0 && event.allowed.max === 80) ? 0.5 : 1.0;
+        }
+
+        function pickWeightedEvent(items) {
+            let totalWeight = 0;
+            for (const item of items) {
+                totalWeight += getFailureEventWeight(item);
+            }
+            if (!totalWeight) return pick(items);
+
+            let threshold = Math.random() * totalWeight;
+            for (const item of items) {
+                const weight = getFailureEventWeight(item);
+                if (threshold < weight) return item;
+                threshold -= weight;
+            }
+            return items[items.length - 1] || null;
+        }
+
         // ---------- Decision tree implementation ----------
         // This is the failure-event selection section that chooses a
         // failure based on the current speed and the event's allowed window.
         function pickFailureEvent(upperBound) {
-            const event = pick(failureEvents);
+            const event = pickWeightedEvent(failureEvents);
             if (!event) return null;
 
             const globalMin = 5;

@@ -1,9 +1,5 @@
 # Current Event and Speed Selection Logic
 
-This document describes the logic currently used by the script.
-
-## Current behavior
-
 1. The script starts with a list of possible failure events.
    - Each event has an associated allowed-speed range.
    - Some events may have no explicit range and are treated as available at any speed.
@@ -27,3 +23,11 @@ This document describes the logic currently used by the script.
 - choose an event randomly
 - compute the allowed speed overlap for that event
 - choose a speed randomly from that overlap (or use a fallback if needed)
+
+## Weighting
+
+- The above will result in equal chance of any event occuring, this may not be the desired result as low speed (< 80 kts) events are simple to solve (stop).
+- The weighting system introdcues a weight for the initial failure selection...
+    - if allowed: { min: 0, max: 80 } then weight = 0.5
+    - else: weight = 1.0
+- This means 0 - 80 kt inhibited failures will occur only ~ 1/3 of the time.
