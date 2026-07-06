@@ -786,21 +786,30 @@
         ];
         const rnd = (lo, hi) => Math.floor(Math.random() * (hi - lo + 1)) + lo;
         const pick = a => a[Math.floor(Math.random() * a.length)];
+        const failureSelectionConfig = {
+            lowSpeedWeight: 0.5,
+            highSpeedWeight: 1.1,
+            speedBias: 3.0
+        };
 
-        function getFailureEventWeight(event) {
-            return (event && event.allowed && event.allowed.min === 0 && event.allowed.max === 80) ? 0.5 : 1.0;
+        function getFailureEventWeight(event, lowSpeedWeight = failureSelectionConfig.lowSpeedWeight, highSpeedWeight = failureSelectionConfig.highSpeedWeight) {
+            const isLowSpeedWindow = event && event.allowed && event.allowed.min === 0 && event.allowed.max === 80;
+            const isHighSpeedWindow = event && event.allowed && event.allowed.min === 101 && event.allowed.max === 125;
+            if (isLowSpeedWindow) return lowSpeedWeight;
+            if (isHighSpeedWindow) return highSpeedWeight;
+            return 1.0;
         }
 
-        function pickWeightedEvent(items) {
+        function pickWeightedEvent(items, lowSpeedWeight = failureSelectionConfig.lowSpeedWeight, highSpeedWeight = failureSelectionConfig.highSpeedWeight) {
             let totalWeight = 0;
             for (const item of items) {
-                totalWeight += getFailureEventWeight(item);
+                totalWeight += getFailureEventWeight(item, lowSpeedWeight, highSpeedWeight);
             }
             if (!totalWeight) return pick(items);
 
             let threshold = Math.random() * totalWeight;
             for (const item of items) {
-                const weight = getFailureEventWeight(item);
+                const weight = getFailureEventWeight(item, lowSpeedWeight, highSpeedWeight);
                 if (threshold < weight) return item;
                 threshold -= weight;
             }
@@ -810,8 +819,8 @@
         // ---------- Decision tree implementation ----------
         // This is the failure-event selection section that chooses a
         // failure based on the current speed and the event's allowed window.
-        function pickFailureEvent(upperBound) {
-            const event = pickWeightedEvent(failureEvents);
+        function pickFailureEvent(upperBound, speedBias = failureSelectionConfig.speedBias, lowSpeedWeight = failureSelectionConfig.lowSpeedWeight, highSpeedWeight = failureSelectionConfig.highSpeedWeight) {
+            const event = pickWeightedEvent(failureEvents, lowSpeedWeight, highSpeedWeight);
             if (!event) return null;
 
             const globalMin = 5;
@@ -829,9 +838,20 @@
                 };
             }
 
+            const range = high - low;
+            if (range <= 0) {
+                return {
+                    event,
+                    failureSpeed: low
+                };
+            }
+
+            const u = Math.random();
+            const p = Math.pow(u, 1 / (1 + speedBias));
+            const sampled = low + Math.floor(p * range);
             return {
                 event,
-                failureSpeed: rnd(low, high)
+                failureSpeed: Math.min(high, sampled)
             };
         }
 
