@@ -39,10 +39,37 @@
 
 <body>
     <h1>Event Distribution Analysis</h1>
-    <button onclick="runAnalysis()">Run 1000 simulations</button>
+    <div class="panel">
+        <label for="lowSpeedWeight">Weight for 0-80 allowed events: </label>
+        <input id="lowSpeedWeight" type="range" min="0.1" max="2" step="0.1" value="0.5" />
+        <span id="lowSpeedWeightValue">0.5</span>
+        <br /><br />
+        <label for="highSpeedWeight">Weight for 101-125 allowed events: </label>
+        <input id="highSpeedWeight" type="range" min="0.1" max="2" step="0.1" value="1.0" />
+        <span id="highSpeedWeightValue">1.0</span>
+        <br /><br />
+        <label for="speedBias">Speed bias: </label>
+        <input id="speedBias" type="range" min="0" max="3" step="0.1" value="0" />
+        <span id="speedBiasValue">0.0</span>
+        <br /><br />
+        <button onclick="runAnalysis()">Run 10,000 simulations</button>
+    </div>
     <div id="output" class="panel"></div>
 
     <script>
+        function updateSliderDisplay() {
+            document.getElementById('lowSpeedWeightValue').textContent = parseFloat(document.getElementById('lowSpeedWeight').value).toFixed(1);
+            document.getElementById('highSpeedWeightValue').textContent = parseFloat(document.getElementById('highSpeedWeight').value).toFixed(1);
+            document.getElementById('speedBiasValue').textContent = parseFloat(document.getElementById('speedBias').value).toFixed(1);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('lowSpeedWeight').addEventListener('input', updateSliderDisplay);
+            document.getElementById('highSpeedWeight').addEventListener('input', updateSliderDisplay);
+            document.getElementById('speedBias').addEventListener('input', updateSliderDisplay);
+            updateSliderDisplay();
+        });
+
         const failureEvents = [
             { text: "AIR PACK 1 FAULT", allowed: { min: 0, max: 80 }, type: 'amber' },
             { text: "BRAKES HOT", allowed: { min: 0, max: 80 }, type: 'amber' },
@@ -87,25 +114,29 @@
             { text: 'CABIN CALL TONE', allowed: null, type: 'other' }
         ];
 
-        function getFailureEventWeight(event) {
-            return (event && event.allowed && event.allowed.min === 0 && event.allowed.max === 80) ? 0.5 : 1.0;
+        function getFailureEventWeight(event, lowSpeedWeight = 0.5, highSpeedWeight = 1.0) {
+            const isLowSpeedWindow = event && event.allowed && event.allowed.min === 0 && event.allowed.max === 80;
+            const isHighSpeedWindow = event && event.allowed && event.allowed.min === 101 && event.allowed.max === 125;
+            if (isLowSpeedWindow) return lowSpeedWeight;
+            if (isHighSpeedWindow) return highSpeedWeight;
+            return 1.0;
         }
 
-        function pickWeightedEvent(items) {
+        function pickWeightedEvent(items, lowSpeedWeight = 0.5, highSpeedWeight = 1.0) {
             let totalWeight = 0;
-            for (const item of items) totalWeight += getFailureEventWeight(item);
+            for (const item of items) totalWeight += getFailureEventWeight(item, lowSpeedWeight, highSpeedWeight);
             if (!totalWeight) return items[Math.floor(Math.random() * items.length)];
             let threshold = Math.random() * totalWeight;
             for (const item of items) {
-                const weight = getFailureEventWeight(item);
+                const weight = getFailureEventWeight(item, lowSpeedWeight, highSpeedWeight);
                 if (threshold < weight) return item;
                 threshold -= weight;
             }
             return items[items.length - 1];
         }
 
-        function pickFailureEvent(upperBound) {
-            const event = pickWeightedEvent(failureEvents);
+        function pickFailureEvent(upperBound, speedBias = 0, lowSpeedWeight = 0.5, highSpeedWeight = 1.0) {
+            const event = pickWeightedEvent(failureEvents, lowSpeedWeight, highSpeedWeight);
             if (!event) return null;
             const globalMin = 5;
             const globalMax = Number.isFinite(upperBound) ? Math.max(globalMin, upperBound - 5) : 165;
@@ -117,7 +148,12 @@
                 const fallback = Math.max(globalMin, Math.min(globalMax, globalMin));
                 return { event, failureSpeed: fallback };
             }
-            return { event, failureSpeed: Math.floor(Math.random() * (high - low + 1)) + low };
+            const range = high - low;
+            if (range <= 0) return { event, failureSpeed: low };
+            const u = Math.random();
+            const p = Math.pow(u, 1 / (1 + speedBias));
+            const sampled = low + Math.floor(p * range);
+            return { event, failureSpeed: Math.min(high, sampled) };
         }
 
         function classifySpeed(speed) {
@@ -138,14 +174,20 @@
         }
 
         function runAnalysis() {
-            const runs = 1000;
+            const runs = 10000;
+            const lowSpeedWeight = parseFloat(document.getElementById('lowSpeedWeight').value);
+            const highSpeedWeight = parseFloat(document.getElementById('highSpeedWeight').value);
+            const speedBias = parseFloat(document.getElementById('speedBias').value);
+            document.getElementById('lowSpeedWeightValue').textContent = lowSpeedWeight.toFixed(1);
+            document.getElementById('highSpeedWeightValue').textContent = highSpeedWeight.toFixed(1);
+            document.getElementById('speedBiasValue').textContent = speedBias.toFixed(1);
             const speedBuckets = { '0-80': 0, '81-100': 0, '101+': 0 };
             const allowedBuckets = {};
             const eventCounts = {};
 
             for (let i = 0; i < runs; i++) {
                 const vr = Math.floor(Math.random() * (170 - 140 + 1)) + 140;
-                const selection = pickFailureEvent(vr);
+                const selection = pickFailureEvent(vr, speedBias, lowSpeedWeight, highSpeedWeight);
                 const speed = selection.failureSpeed;
                 const allowedKind = classifyAllowed(selection.event);
                 const bucket = classifySpeed(speed);
@@ -167,9 +209,9 @@
                 lines.push(`${k}: ${v} (${((v / runs) * 100).toFixed(1)}%)`);
             }
             lines.push('');
-            lines.push('Top events (top 50, % of total runs):');
-            const topEvents = Object.entries(eventCounts).sort((a, b) => b[1] - a[1]).slice(0, 50);
-            for (const [k, v] of topEvents) {
+            lines.push('All events (% of total runs):');
+            const allEvents = Object.entries(eventCounts).sort((a, b) => b[1] - a[1]);
+            for (const [k, v] of allEvents) {
                 lines.push(`${k}: ${v} (${((v / runs) * 100).toFixed(2)}%)`);
             }
 
