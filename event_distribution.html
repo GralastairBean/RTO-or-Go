@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Event Distribution Analysis</title>
+    <style>
+        body {
+            font-family: Consolas, monospace;
+            background: #0a0e14;
+            color: #d0d8e0;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #6cf;
+        }
+
+        .panel {
+            background: #11161d;
+            border: 1px solid #2a3340;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 12px;
+        }
+
+        pre {
+            white-space: pre-wrap;
+        }
+
+        button {
+            padding: 10px 14px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Event Distribution Analysis</h1>
+    <button onclick="runAnalysis()">Run 1000 simulations</button>
+    <div id="output" class="panel"></div>
+
+    <script>
+        const failureEvents = [
+            { text: "AIR PACK 1 FAULT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "BRAKES HOT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "ENG 1 FIRE", allowed: null, type: 'red' },
+            { text: "ENG 2 FIRE", allowed: null, type: 'red' },
+            { text: "ENG 1 FAIL", allowed: null, type: 'amber' },
+            { text: "ENG 2 FAIL", allowed: null, type: 'amber' },
+            { text: "ENG 1 OIL PR LO", allowed: null, type: 'amber' },
+            { text: "ENG 2 OIL PR LO", allowed: null, type: 'amber' },
+            { text: "ENG 1 EGT OVERLIMIT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "ENG 2 EPR MODE FAULT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "ENG 1 N1 OVERLIMIT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "ENG 2 OIL HI TEMP", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "ENG 1 REV UNLOCKED", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "ENG 2 STALL", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "ENG THRUST LOSS", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "F/CTL PRIM 1 FAULT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "F/CTL L INR AIL FAULT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "F/CTL SEC 1 FAULT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "F/CTL SEC 2 FAULT", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "FUEL PUMP 2 LO PRESS", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "HYD Y SYS LO PR", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "HYD B SYS LO PR", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "HYD G SYS LO PR", allowed: { min: 0, max: 80 }, type: 'amber' },
+            { text: "SMOKE FWD CRG SMOKE", allowed: { min: 0, max: 80 }, type: 'red' },
+            { text: "SMOKE AFT CRG SMOKE", allowed: { min: 0, max: 80 }, type: 'red' },
+            { text: "EGT OVERLIMIT (NO ECAM)", allowed: { min: 80, max: 999 }, type: 'crew' },
+            { text: "N1 OVERSPEED (NO ECAM)", allowed: { min: 80, max: 999 }, type: 'crew' },
+            { text: "ENG 1 EGT AMBER X", allowed: null, type: 'crew' },
+            { text: "PF PFD BLANK", allowed: null, type: 'crew' },
+            { text: "PM PFD BLANK", allowed: null, type: 'crew' },
+            { text: "strong vibrations felt", allowed: null, type: 'crew' },
+            { text: "LOUD BANG", allowed: null, type: 'crew' },
+            { text: "negative speed trend", allowed: { min: 70, max: 125 }, type: 'crew' },
+            { text: "10kt speed discrepancy", allowed: { min: 101, max: 125 }, type: 'crew' },
+            { text: "20kt speed discrepancy", allowed: { min: 101, max: 125 }, type: 'crew' },
+            { text: "30kt speed discrepancy", allowed: { min: 101, max: 125 }, type: 'crew' },
+            { text: "50kt speed discrepancy", allowed: { min: 101, max: 125 }, type: 'crew' },
+            { text: '"WINDSHEAR AHEAD"', allowed: { min: 0, max: 100 }, type: 'other' },
+            { text: '"MONITOR RADAR DISPLAY"', allowed: { min: 0, max: 100 }, type: 'other' },
+            { text: 'ATC: "STOP STOP STOP"', allowed: null, type: 'other' },
+            { text: 'CABIN CALL TONE', allowed: null, type: 'other' }
+        ];
+
+        function getFailureEventWeight(event) {
+            return (event && event.allowed && event.allowed.min === 0 && event.allowed.max === 80) ? 0.5 : 1.0;
+        }
+
+        function pickWeightedEvent(items) {
+            let totalWeight = 0;
+            for (const item of items) totalWeight += getFailureEventWeight(item);
+            if (!totalWeight) return items[Math.floor(Math.random() * items.length)];
+            let threshold = Math.random() * totalWeight;
+            for (const item of items) {
+                const weight = getFailureEventWeight(item);
+                if (threshold < weight) return item;
+                threshold -= weight;
+            }
+            return items[items.length - 1];
+        }
+
+        function pickFailureEvent(upperBound) {
+            const event = pickWeightedEvent(failureEvents);
+            if (!event) return null;
+            const globalMin = 5;
+            const globalMax = Number.isFinite(upperBound) ? Math.max(globalMin, upperBound - 5) : 165;
+            const eventMin = Number.isFinite(event.allowed && event.allowed.min) ? event.allowed.min : globalMin;
+            const eventMax = Number.isFinite(event.allowed && event.allowed.max) ? event.allowed.max : globalMax;
+            const low = Math.max(globalMin, eventMin);
+            const high = Math.min(globalMax, eventMax);
+            if (!Number.isFinite(low) || !Number.isFinite(high) || low > high) {
+                const fallback = Math.max(globalMin, Math.min(globalMax, globalMin));
+                return { event, failureSpeed: fallback };
+            }
+            return { event, failureSpeed: Math.floor(Math.random() * (high - low + 1)) + low };
+        }
+
+        function classifySpeed(speed) {
+            if (speed <= 80) return '0-80';
+            if (speed <= 100) return '81-100';
+            return '101+';
+        }
+
+        function classifyAllowed(event) {
+            const allowed = event && event.allowed;
+            if (!allowed) return 'unbounded';
+            if (allowed.min === 0 && allowed.max === 80) return '0-80';
+            if (allowed.min === 80 && allowed.max === 999) return '80-999';
+            if (allowed.min === 70 && allowed.max === 125) return '70-125';
+            if (allowed.min === 101 && allowed.max === 125) return '101-125';
+            if (allowed.min === 0 && allowed.max === 100) return '0-100';
+            return `${allowed.min}-${allowed.max}`;
+        }
+
+        function runAnalysis() {
+            const runs = 1000;
+            const speedBuckets = { '0-80': 0, '81-100': 0, '101+': 0 };
+            const allowedBuckets = {};
+            const eventCounts = {};
+
+            for (let i = 0; i < runs; i++) {
+                const vr = Math.floor(Math.random() * (170 - 140 + 1)) + 140;
+                const selection = pickFailureEvent(vr);
+                const speed = selection.failureSpeed;
+                const allowedKind = classifyAllowed(selection.event);
+                const bucket = classifySpeed(speed);
+                speedBuckets[bucket] += 1;
+                allowedBuckets[allowedKind] = (allowedBuckets[allowedKind] || 0) + 1;
+                eventCounts[selection.event.text] = (eventCounts[selection.event.text] || 0) + 1;
+            }
+
+            const lines = [];
+            lines.push(`Simulated ${runs} runs`);
+            lines.push('');
+            lines.push('Speed window counts:');
+            for (const [k, v] of Object.entries(speedBuckets)) {
+                lines.push(`${k}: ${v} (${((v / runs) * 100).toFixed(1)}%)`);
+            }
+            lines.push('');
+            lines.push('Allowed-kind counts:');
+            for (const [k, v] of Object.entries(allowedBuckets).sort((a, b) => b[1] - a[1])) {
+                lines.push(`${k}: ${v} (${((v / runs) * 100).toFixed(1)}%)`);
+            }
+            lines.push('');
+            lines.push('Top events (top 50, % of total runs):');
+            const topEvents = Object.entries(eventCounts).sort((a, b) => b[1] - a[1]).slice(0, 50);
+            for (const [k, v] of topEvents) {
+                lines.push(`${k}: ${v} (${((v / runs) * 100).toFixed(2)}%)`);
+            }
+
+            document.getElementById('output').innerHTML = '<pre>' + lines.join('\n') + '</pre>';
+            console.log(lines.join('\n'));
+        }
+    </script>
+</body>
+
+</html>
