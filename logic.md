@@ -31,7 +31,7 @@
 - The above will result in equal chance of any event occuring, this may not be the desired result as low speed (< 80 kts) events are simple to solve (stop).
 - The weighting system introdcues a weight for the initial failure selection...
     - if allowed: { min: 0, max: 80 } then weight = 0.5 (reduce > 80 kt inhibited alerts)
-    - if allowed: { min: 101, max: 125 } then weight = 1.5 (increase speed discrepancy issues)
+    - if allowed: { min: 101, max: 125 } then weight = 1.1 (increase speed discrepancy issues)
     - else: weight = 1.0 (all other events have a standard weight)
 - This means 0 - 80 kt inhibited failures will occur only ~ 1/3 of the time.
 
